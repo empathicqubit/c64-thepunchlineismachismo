@@ -1,7 +1,8 @@
 CLEAN=rm
 CLEANARGS=-f
+COPY=cp
 BUILDPATH=build
-BUILD=c64-devkit.prg
+BUILD=machismo.prg
 SOURCEPATH=.
 SOURCE=index.asm
 COMPILER=acme
@@ -27,7 +28,7 @@ TABLE3ARGS=256 80 255 0 360 60 2 1
 TABLE4=sin4.dat
 TABLE4ARGS=256 90 255 0 720 80 1 0
 
-all: luts compile crunch run
+all: luts compile crunch copy
 
 clean:
 	$(CLEAN) $(CLEANARGS) $(BUILDPATH)/* $(TABLESPATH)/*
@@ -46,6 +47,9 @@ compile:
 crunch:
 	$(CRUNCHER) $(CRUNCHERARGS) $(BUILDPATH)/$(BUILD) $(BUILDPATH)/$(BUILD)
 
+copy:
+	$(CLEAN) -i $(ROMPATH)/$(BUILD)
+	$(COPY) $(BUILDPATH)/$(BUILD) $(ROMPATH)/$(BUILD)
+
 run:
-	rm -i $(ROMPATH)/$(BUILD)
-	cp $(BUILDPATH)/$(BUILD) $(ROMPATH)/$(BUILD)
+	$(EMULATOR) $(EMULATORARGS) $(BUILDPATH)/$(BUILD)
