@@ -47,8 +47,10 @@ compile:
 crunch:
 	$(CRUNCHER) $(CRUNCHERARGS) $(BUILDPATH)/$(BUILD) $(BUILDPATH)/$(BUILD)
 
-copy:
-	$(CLEAN) -i $(ROMPATH)/$(BUILD)
+copyclean:
+	$(CLEAN) -i $(ROMPATH)/$(BUILD) || exit 0
+
+copy: copyclean
 	$(COPY) $(BUILDPATH)/$(BUILD) $(ROMPATH)/$(BUILD)
 
 run:
