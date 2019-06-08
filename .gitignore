@@ -1,2 +1,4 @@
 build/
 resources/generated/
+*.o
+*.s

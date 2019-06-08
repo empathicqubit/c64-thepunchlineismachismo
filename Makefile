@@ -1,57 +1,19 @@
-CLEAN=rm
-CLEANARGS=-f
-COPY=cp
-BUILDPATH=build
-BUILD=machismo.prg
-SOURCEPATH=.
-SOURCE=index.asm
-COMPILER=acme
-COMPILERREPORT=buildreport
-COMPILERSYMBOLS=symbols
-COMPILERARGS=-r $(BUILDPATH)/$(COMPILERREPORT) --vicelabels $(BUILDPATH)/$(COMPILERSYMBOLS) --msvc --color --format cbm -v3 --outfile
-CRUNCHER=pucrunch
-CRUNCHERARGS=-x0xc000 -c64 -g55 -fshort
-EMULATOR=x64
-ROMPATH=/mnt/chromeos/PlayFiles/roms
-EMULATORARGS=
-GENOSINE=genosine
-RESOURCESPATH=resources
-GENERATEDPATH=$(RESOURCESPATH)/generated
-TABLESPATH=$(GENERATEDPATH)/tables
+OUTPUT=machismo.prg
+OUTPUTPATH=build/$(OUTPUT)
+all: build crunch copy
 
-TABLE1=sin1.dat
-TABLE1ARGS=256 63 81 0 720 80 3 0
-TABLE2=sin2.dat
-TABLE2ARGS=256 0 255 0 180 20 3 1
-TABLE3=sin3.dat
-TABLE3ARGS=256 80 255 0 360 60 2 1
-TABLE4=sin4.dat
-TABLE4ARGS=256 90 255 0 720 80 1 0
-
-all: luts compile crunch copy
-
-clean:
-	$(CLEAN) $(CLEANARGS) $(BUILDPATH)/* $(TABLESPATH)/*
-
-luts:
-	mkdir -p $(TABLESPATH)
-	$(GENOSINE) $(TABLE1ARGS) > $(TABLESPATH)/$(TABLE1)
-	$(GENOSINE) $(TABLE2ARGS) > $(TABLESPATH)/$(TABLE2)
-	$(GENOSINE) $(TABLE3ARGS) > $(TABLESPATH)/$(TABLE3)
-	$(GENOSINE) $(TABLE4ARGS) > $(TABLESPATH)/$(TABLE4)
-
-compile:
-	mkdir -p $(BUILDPATH)
-	$(COMPILER) $(COMPILERARGS) $(BUILDPATH)/$(BUILD) $(SOURCE)
+build:
+	mkdir -p build/
+	cl65 -t c64 -o $(OUTPUTPATH) -O code/main.c resources/text.s
 
 crunch:
-	$(CRUNCHER) $(CRUNCHERARGS) $(BUILDPATH)/$(BUILD) $(BUILDPATH)/$(BUILD)
+	echo nope
 
 copyclean:
-	$(CLEAN) -i $(ROMPATH)/$(BUILD) || exit 0
+	rm -i /mnt/chromeos/PlayFiles/roms/$(OUTPUT) || exit 0
 
 copy: copyclean
-	$(COPY) $(BUILDPATH)/$(BUILD) $(ROMPATH)/$(BUILD)
+	cp build/machismo.prg /mnt/chromeos/removable/Chromebook/user/roms/$(OUTPUT)
 
-run:
-	$(EMULATOR) $(EMULATORARGS) $(BUILDPATH)/$(BUILD)
+run: all
+	x64 $(OUTPUTPATH)
