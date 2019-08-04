@@ -1,3 +1,8 @@
 build/
 resources/generated/
+node_modules/
 *.o
+*.sprite.*
+*.d81
+*.prg
+*.sid

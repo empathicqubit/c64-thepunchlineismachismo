@@ -6,78 +6,28 @@
 
 extern const char text[];
 
-void joy_wait(char mask) {
-    while(1) {
-        char val = joy_read(0x01);
-        if(val & mask) {
-            break;
-        }
-    }
-}
+const char* SID_START=0x8000;
 
-void (*joy_hooks[])(void) = { 0x00, 0x00, 0x00, 0x00, 0x00 };
+extern void sid_init (void);
 
-void maybe_call_joy_hook(int idx) {
-    void (*hook)(void) = joy_hooks[idx];
-    if(hook) {
-        hook();
-        joy_hooks[idx] = 0x00;
-    }
-}
+extern void sid_play (void);
 
-void set_joy_hook(int idx, void (*ptr)(void)) {
-    joy_hooks[idx] = ptr;
-}
-
-#define JOY_HOOK_UP 0
-#define JOY_HOOK_DOWN 1
-#define JOY_HOOK_LEFT 2
-#define JOY_HOOK_RIGHT 3
-#define JOY_HOOK_FIRE 4
-
-void step_two(void) {
-    tgi_setcolor(TGI_COLOR_GREEN);
-    tgi_bar(45 + 45, 45, 90 + 45, 90);
-}
-
-void step_one(void) {
-    tgi_setcolor(TGI_COLOR_GREEN);
-    tgi_bar(45, 45, 90, 90);
-
-    set_joy_hook(JOY_HOOK_RIGHT, step_two);
-}
-
-void input_loop(void) {
-    while(1) {
-        char val = joy_read(0x01);
-
-        if(val & JOY_UP_MASK) {
-            maybe_call_joy_hook(JOY_HOOK_UP);
-        }
-        if(val & JOY_DOWN_MASK) {
-            maybe_call_joy_hook(JOY_HOOK_DOWN);
-        }
-        if(val & JOY_LEFT_MASK) {
-            maybe_call_joy_hook(JOY_HOOK_LEFT);
-        }
-        if(val & JOY_RIGHT_MASK) {
-            maybe_call_joy_hook(JOY_HOOK_RIGHT);
-        }
-    }
+void sid_loop (void) {
+    while(1) sid_play();
 }
 
 int main (void) {
+    FILE* fp;
+
     printf("%s\n", text);
 
-    joy_install(&joy_static_stddrv);
+    fp = fopen("intro.sid", "rb");
 
-    tgi_install(tgi_static_stddrv);
-    tgi_init();
-    tgi_clear();
+    fread(SID_START, 256, SID_SIZE / 256 + 1, fp);
+    fclose(fp);
 
-    set_joy_hook(JOY_HOOK_UP, step_one);
-
-    input_loop();
+    sid_init();
+    sid_loop();
 
     return EXIT_SUCCESS;
 }
