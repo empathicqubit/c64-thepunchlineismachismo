@@ -1,4 +1,5 @@
 D81=machismo.d81
+SID_HIGHBYTE=80
 
 all: build
 
@@ -39,11 +40,11 @@ empty.d81:
 	cp -n empty.d81 $(D81)
 
 machismo.prg: linker.cfg code/main.c code/sid.s resources/text.s $(sprites) $(audio)
-	sidsize=$$(du -b -s $(audio) | sort -nr | head -1 | awk '{print $$1}') && cl65 -t c64 -C linker.cfg -Wc "-DSID_SIZE=$$sidsize" -Wl "-D__SIDMEM__=$$sidsize" -o $@ -O $(filter %.c %.s,$^)
+	sidsize=$$(du -b -s $(audio) | sort -nr | head -1 | awk '{print $$1}') && cl65 -t c64 -C linker.cfg -Wc "-DSID_SIZE=$$sidsize" -Wl "-D__SIDADDR__=\$$$(SID_HIGHBYTE)00 -D__SIDMEM__=$$sidsize" -o $@ -O $(filter %.c %.s,$^)
 
 %.sid: %.sng
 	# You need to set the correct extension otherwise the output format will be SIDPlay!!!
-	gt2reloc $< $@.bin -N -W80 -B1 -D1 -ZFB -C0 -E0 -H0
+	gt2reloc $< $@.bin -N -W$(SID_HIGHBYTE) -B1 -D1 -ZFB -C0 -E0 -H0
 	mv $@.bin $@
 
 %.sprite.s: %.pcx
