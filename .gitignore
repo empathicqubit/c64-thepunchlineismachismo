@@ -3,6 +3,6 @@ resources/generated/
 node_modules/
 *.o
 *.sprite.*
-*.d81
-*.prg
+/*.d81
+/*.prg
 *.sid

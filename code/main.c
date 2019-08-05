@@ -3,10 +3,9 @@
 #include <tgi.h>
 #include <joystick.h>
 #include <conio.h>
+#include "koala.h"
 
 extern const char text[];
-
-const char* SID_START=0x8000;
 
 extern void sid_init (void);
 
@@ -25,6 +24,8 @@ int main (void) {
 
     fread(SID_START, 256, SID_SIZE / 256 + 1, fp);
     fclose(fp);
+
+    koala_load("intro.koa");
 
     sid_init();
     sid_loop();
