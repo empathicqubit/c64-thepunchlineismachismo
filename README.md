@@ -1,6 +1,6 @@
 # c64-thepunchlineismachismo
 
-A Commodore game about the space military's baddest of asses.
+A Commodore game about the Canadian military's random bootleg macho man.
 
 # Prerequisites (build/run)
 
