@@ -40,10 +40,10 @@ machismo.d81: empty.d81 machismo.prg $(audio) $(bitmaps)
 
 empty.d81:
 	c1541 -format "canada,01" d81 $@
-	cp -n empty.d81 $(D81)
+	[ ! -f "$(D81)" ] && cp empty.d81 $(D81)
 
 machismo.prg: linker.cfg code/koala.c code/main.c code/sid.s resources/text.s $(sprites) $(audio)
-	sidsize=$$(du -b -s $(audio) | sort -nr | head -1 | awk '{print $$1}') && cl65 -t c64 -C linker.cfg -Wc "-DSID_START=0x$(SID_HIGHBYTE)00" -Wc "-DSID_SIZE=$$sidsize" -Wl "-D__SIDADDR__=\$$$(SID_HIGHBYTE)00 -D__SIDMEM__=$$sidsize" -o $@ -O $(filter %.c %.s,$^)
+	sidsize=$$(stat -c'%s' $(audio) | sort -nr | head -1) && cl65 -t c64 -C linker.cfg -Wc "-DSID_START=0x$(SID_HIGHBYTE)00" -Wc "-DSID_SIZE=$$sidsize" -Wl "-D__SIDADDR__=\$$$(SID_HIGHBYTE)00 -D__SIDMEM__=$$sidsize" -o $@ -O $(filter %.c %.s,$^)
 
 %.sid: %.sng
 	# You need to set the correct extension otherwise the output format will be SIDPlay!!!
