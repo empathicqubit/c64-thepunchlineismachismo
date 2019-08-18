@@ -66,8 +66,8 @@ unsigned char main (void) {
 
     puts(r_text_loading2);
 
-    *(char *)VIC_SPR_MCOLOR0 = VIC_COLOR_GREEN;
-    *(char *)VIC_SPR_MCOLOR1 = VIC_COLOR_BLUE;
+    *(char *)VIC_SPR_MCOLOR0 = COLOR_GREEN;
+    *(char *)VIC_SPR_MCOLOR1 = COLOR_BLUE;
 
     if(err = sprite_load(heart_addr, 0, spritex, spritey, true, COLOR_RED)) {
         printf("There was a problem loading the sprite: %x\n", err);
