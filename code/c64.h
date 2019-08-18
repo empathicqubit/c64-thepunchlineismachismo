@@ -32,6 +32,7 @@
 
 #define CHARCOLOR        0x286
 #define CURS_COLOR       0x287         // Color under the cursor
+#define SCREEN_IO_HI_PTR 0x288
 #define PALFLAG          0x2A6         // 0x01  PAL, 0x00  NTSC
 
 #define KBDREPEAT        0x28a
@@ -92,12 +93,32 @@
 #define VIC_CTRL1        0xD011
 #define VIC_CTRL2        0xD016
 
+#define VIC_SPR_SIZE     0x40
+
+#define VIC_CTRL1_BITMAP_ON     0x20
+#define VIC_CTRL2_MULTICOLOR_ON 0x10
+
 #define VIC_HLINE        0xD012
 
 #define VIC_LPEN_X       0xD013
 #define VIC_LPEN_Y       0xD014
 
 #define VIC_VIDEO_ADR    0xD018
+
+// Character memory pointer bits MSB-LSB
+#define VIC_VIDEO_ADR_CHAR_PTR_MASK 0x0E
+#define VIC_VIDEO_ADR_CHAR_PTR0 0x08
+#define VIC_VIDEO_ADR_CHAR_PTR1 0x04
+#define VIC_VIDEO_ADR_CHAR_PTR2 0x02
+
+// Screen memory pointer bits MSB-LSB
+#define VIC_VIDEO_ADR_SCREEN_PTR_MASK 0xF0
+#define VIC_VIDEO_ADR_SCREEN_PTR0 0x80
+#define VIC_VIDEO_ADR_SCREEN_PTR1 0x40
+#define VIC_VIDEO_ADR_SCREEN_PTR2 0x20
+#define VIC_VIDEO_ADR_SCREEN_PTR3 0x10
+
+#define VIC_BANK_SIZE 0x4000
 
 #define VIC_IRR          0xD019        // Interrupt request register
 #define VIC_IMR          0xD01A        // Interrupt mask register
@@ -167,6 +188,9 @@
 #define CIA1_ICR         0xDC0D        // Interrupt control register
 #define CIA1_CRA         0xDC0E        // Control register for timer A
 #define CIA1_CRB         0xDC0F        // Control register for timer B
+
+#define CIA2_PRA_VIC_BANK0 0x02
+#define CIA2_PRA_VIC_BANK1 0x01
 
 #define CIA2_PRA         0xDD00
 #define CIA2_PRB         0xDD01

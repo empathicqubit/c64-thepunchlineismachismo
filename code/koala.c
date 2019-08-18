@@ -1,16 +1,10 @@
 #include <stdio.h>
 #include <conio.h>
+#include <stdlib.h>
 #include "c64.h"
 
-#define poke(A,X) (*(unsigned char *)A) = (X)
-#define peek(A) (*(unsigned char *)A)
-
-int koala_load (char filename[]) {
+unsigned char koala_load (char filename[]) {
   unsigned char addr[2];
-  unsigned char* bitmap = 0x2000;
-  unsigned char* screen = 0x0400;
-  unsigned char* color = 0xd800;
-  unsigned char* bg = 0xd021;
 
   /* open the file */
   FILE* fp;
@@ -21,28 +15,25 @@ int koala_load (char filename[]) {
   /* make sure load address is $4400 or $6000 */
   if (addr[0] != 0 || (addr[1] != 0x44 && addr[1] != 0x60)) {
     fclose(fp);
-    return 1;
+    return EXIT_FAILURE;
   }
 
   if(!(
-      /* load bitmap data */
-      fread(bitmap, 200, 8000 / 200, fp)
-      /* load screen data */
-      && fread(screen, 200, 1000 / 200, fp)
-      /* load colour ram */
-      && fread(color, 200, 1000 / 200, fp)
-      /* load background colour into $d021 */
-      && fread(bg, 1, 1, fp)
+      fread(BITMAP_START, 200, 8000 / 200, fp)
+      && fread(SCREEN_START, 200, 1000 / 200, fp)
+      && fread(COLOR_RAM, 200, 1000 / 200, fp)
+      && fread(VIC_BG_COLOR0, 1, 1, fp)
   )) {
       fclose(fp);
-      return 1;
+      return EXIT_FAILURE;
   }
 
-  poke(VIC_CTRL1, 0x3b); /* enable bitmap mode */
-  poke(VIC_CTRL2, 0x18); /* enable multicolour */
-  poke(VIC_VIDEO_ADR, 0x1f); /* screen at $0400 bitmap at $2000 */
-  poke(VIC_BORDERCOLOR, 0x00); /* black border */
+  *(unsigned char *)VIC_CTRL1 |= VIC_CTRL1_BITMAP_ON;
+  *(unsigned char *)VIC_CTRL2 |= VIC_CTRL2_MULTICOLOR_ON;
 
-  return 0;
+  *(unsigned char *)VIC_VIDEO_ADR &= ~(VIC_VIDEO_ADR_CHAR_PTR_MASK);
+  *(unsigned char *)VIC_VIDEO_ADR |= ((BITMAP_START % VIC_BANK_SIZE) / 0x800) << 1;
+
+  return EXIT_SUCCESS;
 }
 

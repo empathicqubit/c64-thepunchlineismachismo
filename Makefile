@@ -1,5 +1,7 @@
 D81=machismo.d81
-SID_HIGHBYTE=80
+SID_HIGHBYTE=C0
+BITMAP_START=A000
+SCREEN_START=8000
 
 all: build
 
@@ -14,6 +16,7 @@ clean:
 	rm -rf $(D81)
 	rm -rf empty.d81
 	find . -iname '*.o' -delete
+	rm -rf machismo.lbl
 	rm -rf $(sprites)
 	rm -rf $(audio)
 
@@ -31,8 +34,12 @@ sprites := $(patsubst %.pcx,%.sprite.s,$(wildcard resources/sprites/*.pcx))
 
 audio := $(patsubst %.sng,%.sid,$(wildcard resources/audio/*.sng))
 
+charset := $(wildcard resources/charset/*.s)
+
 # Generate these with a rule if possible. Poke at polizei JAR?
 bitmaps := $(patsubst %.png,%.koa,$(wildcard resources/bitmap/*.png))
+
+code := $(wildcard code/*.c) $(wildcard code/*.s)
 
 machismo.d81: empty.d81 machismo.prg $(audio) $(bitmaps)
 	# Writes all files that have changed.
@@ -40,10 +47,10 @@ machismo.d81: empty.d81 machismo.prg $(audio) $(bitmaps)
 
 empty.d81:
 	c1541 -format "canada,01" d81 $@
-	[ ! -f "$(D81)" ] && cp empty.d81 $(D81)
+	test ! -f "$(D81)" && cp empty.d81 $(D81) || exit 0
 
-machismo.prg: linker.cfg code/koala.c code/main.c code/sid.s resources/text.s $(sprites) $(audio)
-	sidsize=$$(stat -c'%s' $(audio) | sort -nr | head -1) && cl65 -t c64 -C linker.cfg -Wc "-DSID_START=0x$(SID_HIGHBYTE)00" -Wc "-DSID_SIZE=$$sidsize" -Wl "-D__SIDADDR__=\$$$(SID_HIGHBYTE)00 -D__SIDMEM__=$$sidsize" -o $@ -O $(filter %.c %.s,$^)
+machismo.prg: linker.cfg $(code) resources/text.s $(charset) $(sprites) $(audio)
+	sidsize=$$(stat -c'%s' $(audio) | sort -nr | head -1) && echo "SID SIZE $$sidsize" && cl65 -g -t c64 -C linker.cfg -Wc "-DBITMAP_START=0x$(BITMAP_START)" -Wc "-DSCREEN_START=0x$(SCREEN_START)" "-DSID_START=0x$(SID_HIGHBYTE)00" -Wc "-DSID_SIZE=$$sidsize" -Wl "-Lnmachismo.lbl" -o $@ -O $(filter %.c %.s,$^)
 
 %.sid: %.sng
 	# You need to set the correct extension otherwise the output format will be SIDPlay!!!
@@ -53,5 +60,4 @@ machismo.prg: linker.cfg code/koala.c code/main.c code/sid.s resources/text.s $(
 %.sprite.s: %.pcx
 	sp65 -r $<:pcx -c vic2-sprite -w $(basename $@).bin:bin
 	echo '.export _r_sprites_$(basename $(notdir $<))' > $@
-	echo '_r_sprites_$(basename $(notdir $<)): .incbin "$@"' >> $@
-
+	echo '_r_sprites_$(basename $(notdir $<)): .incbin "$(basename $@).bin"' >> $@
