@@ -1,4 +1,5 @@
 unsigned char sid_load (char filename[]);
 
-void sid_play_frame (void);
+unsigned char sid_stop (void);
 
+void sid_play_frame (void);

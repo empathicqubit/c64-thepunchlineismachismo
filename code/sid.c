@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "c64.h"
 
 extern void sid_init (void);
 
@@ -17,6 +18,14 @@ unsigned char sid_load (char filename[]) {
     fclose(fp);
 
     sid_init();
+
+    return EXIT_SUCCESS;
+}
+
+unsigned char sid_stop(void) {
+    *(unsigned char *)SID_Ctl1 = 0x00;
+    *(unsigned char *)SID_Ctl2 = 0x00;
+    *(unsigned char *)SID_Ctl3 = 0x00;
 
     return EXIT_SUCCESS;
 }

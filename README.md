@@ -11,3 +11,4 @@ A Commodore game about the Canadian military's random bootleg macho man.
 # Additional dev tools
 - Multipaint -- To draw with the C64 restrictions in mind
 - ppolizei -- To convert the png from multipaint to koala
+- Spritemate (preferably the offline electron version) -- To draw sprites and save them in the handy SpritePad sprite sheet format. Stores sprite info like multicolor mode and sprite color in the 64th byte, and has a header to track the multicolor1&2 for the sheet.

@@ -1,28 +1,18 @@
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include "c64.h"
 
-// Start a character page after the VIC hole, to allow room for another
-// character set.
-unsigned char* _sprite_addr = SCREEN_START + 0x400;
+/* Move a sprite that is already loaded
+ * @param sprite_slot - Which of the 8 sprite slots on the C64.
+ * @param x - X position
+ * @param y - Y position
+ */
+void sprite_move(unsigned char sprite_slot, unsigned int x, unsigned char y) {
+    char hi_mask = (1<<sprite_slot);
 
-unsigned char* sprite_next_addr() {
-    unsigned char* current = _sprite_addr;
-
-    _sprite_addr += VIC_SPR_SIZE; // bytes per sprite
-
-    if(_sprite_addr >= (unsigned char *)(SCREEN_START + 0x1000)) {
-        _sprite_addr = SCREEN_START + 0x400;
-    }
-
-    return current;
-}
-
-void sprite_move(unsigned char idx, unsigned int x, unsigned char y) {
-    char hi_mask = (1<<idx);
-
-    unsigned char* sprite_x = VIC_SPR0_X + idx * 2;
-    unsigned char* sprite_y = VIC_SPR0_Y + idx * 2;
+    unsigned char* sprite_x = VIC_SPR0_X + sprite_slot * 2;
+    unsigned char* sprite_y = VIC_SPR0_Y + sprite_slot * 2;
 
     char* hi = VIC_SPR_HI_X;
     if(x>>8) {
@@ -36,27 +26,109 @@ void sprite_move(unsigned char idx, unsigned int x, unsigned char y) {
     *sprite_y = y;
 }
 
-unsigned char sprite_load(unsigned char* sprite_data, unsigned char idx, unsigned int x, unsigned char y, bool mcolor, unsigned char sprite_color) {
-    char hi_mask = (1<<idx);
+typedef struct {
+    unsigned char sprite_data[63];
+    unsigned char metadata;
+} spd_sprite;
+
+typedef struct {
+    unsigned char magic[3];
+    unsigned char version;
+    unsigned char sprite_count;
+    unsigned char animation_count;
+    unsigned char background_color;
+    unsigned char multicolor_0;
+    unsigned char multicolor_1;
+    spd_sprite sprites[];
+} spd;
+
+const unsigned char* SPRITE_AREA = SCREEN_START + VIC_VIDEO_ADR_SCREEN_DIVISOR + VIC_SPR_SIZE - 9;
+const unsigned char SPRITE_MAX = 47;
+
+/* Load a sprite sheet in SpritePad format
+ * @param filename - The filename on disk
+ * @return - Whether the sheet successfully loaded into memory.
+ */
+unsigned char spritesheet_load(char filename[]) {
+    FILE* fp;
+    spd* spd_data;
+
+    fp = fopen(filename, "rb");
+
+    if(!fread(SPRITE_AREA, 9, 1, fp)) {
+        fclose(fp);
+        return EXIT_FAILURE;
+    }
+
+    spd_data = (spd*)SPRITE_AREA;
+
+    if(spd_data->sprite_count + 1 > SPRITE_MAX) {
+        fclose(fp);
+        return EXIT_FAILURE;
+    }
+
+    if(!fread(SPRITE_AREA + 9, VIC_SPR_SIZE, spd_data->sprite_count + 1, fp)) {
+        fclose(fp);
+        return EXIT_FAILURE;
+    }
+
+    // FIXME tf is background? The background is transparent!
+
+    *(unsigned char *)VIC_SPR_MCOLOR0 = spd_data->multicolor_0;
+    *(unsigned char *)VIC_SPR_MCOLOR1 = spd_data->multicolor_1;
+
+    return EXIT_SUCCESS;
+}
+
+const unsigned char SPD_SPRITE_MULTICOLOR_ENABLE_MASK = 0x80;
+const unsigned char SPD_SPRITE_COLOR_VALUE_MASK = 0x0F;
+
+/* Load a sprite with SpritePad metadata byte
+ * @param sheet_idx - The sprite index in the sheet.
+ * @param sprite_slot - Which of the 8 sprite slots on the C64.
+ * @param x - X position
+ * @param y - Y position
+ */
+unsigned char spritesheet_show(unsigned char sheet_idx, unsigned char sprite_slot, unsigned int x, unsigned char y, bool double_width, bool double_height) {
+    char hi_mask;
     unsigned char* spr_pointers;
+    spd* spd_data = (spd*)SPRITE_AREA;
+    spd_sprite* spd_sprite;
 
-    if(idx > 7) return EXIT_FAILURE;
-    if((unsigned int)sprite_data % VIC_SPR_SIZE) return EXIT_FAILURE;
+    if(sprite_slot > 7) return EXIT_FAILURE;
 
-    sprite_move(idx, x, y);
+    spd_sprite = &(spd_data->sprites[sheet_idx]);
+
+    hi_mask = (1<<sprite_slot);
+
+    sprite_move(sprite_slot, x, y);
 
     spr_pointers = SCREEN_START + 0x03F8;
 
-    spr_pointers[idx] = (unsigned char)(((unsigned int)sprite_data / VIC_SPR_SIZE));
+    spr_pointers[sprite_slot] = (unsigned char)((unsigned int)spd_sprite / VIC_SPR_SIZE);
 
-    if(mcolor) {
+    if(spd_sprite->metadata & SPD_SPRITE_MULTICOLOR_ENABLE_MASK) {
         *(char *)VIC_SPR_MCOLOR |= hi_mask;
     }
     else {
         *(char *)VIC_SPR_MCOLOR &= ~hi_mask;
     }
 
-    ((char *)VIC_SPR0_COLOR)[idx] = sprite_color;
+    if(double_width) {
+        *(char *)VIC_SPR_EXP_X |= hi_mask;
+    }
+    else {
+        *(char *)VIC_SPR_EXP_X &= ~hi_mask;
+    }
+
+    if(double_height) {
+        *(char *)VIC_SPR_EXP_Y |= hi_mask;
+    }
+    else {
+        *(char *)VIC_SPR_EXP_Y &= ~hi_mask;
+    }
+
+    ((char *)VIC_SPR0_COLOR)[sprite_slot] = spd_sprite->metadata;
 
     *(char *)VIC_SPR_ENA |= hi_mask;
 
