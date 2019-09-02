@@ -8,13 +8,16 @@
  * @param x - X position
  * @param y - Y position
  */
-void sprite_move(unsigned char sprite_slot, unsigned int x, unsigned char y) {
+unsigned char sprite_move(unsigned char sprite_slot, unsigned int x, unsigned char y) {
     char hi_mask = (1<<sprite_slot);
+
+    char* hi = VIC_SPR_HI_X;
 
     unsigned char* sprite_x = VIC_SPR0_X + sprite_slot * 2;
     unsigned char* sprite_y = VIC_SPR0_Y + sprite_slot * 2;
 
-    char* hi = VIC_SPR_HI_X;
+    if(sprite_slot > VIC_SPR_COUNT-1) return EXIT_FAILURE;
+
     if(x>>8) {
         *hi |= hi_mask;
     }
@@ -24,6 +27,8 @@ void sprite_move(unsigned char sprite_slot, unsigned int x, unsigned char y) {
 
     *sprite_x = (unsigned char)x;
     *sprite_y = y;
+
+    return EXIT_SUCCESS;
 }
 
 typedef struct {
@@ -83,25 +88,38 @@ unsigned char spritesheet_load(char filename[]) {
 const unsigned char SPD_SPRITE_MULTICOLOR_ENABLE_MASK = 0x80;
 const unsigned char SPD_SPRITE_COLOR_VALUE_MASK = 0x0F;
 
-/* Load a sprite with SpritePad metadata byte
- * @param sheet_idx - The sprite index in the sheet.
+/* Get the current sprite index in the spritesheet
  * @param sprite_slot - Which of the 8 sprite slots on the C64.
- * @param x - X position
- * @param y - Y position
  */
-unsigned char spritesheet_show(unsigned char sheet_idx, unsigned char sprite_slot, unsigned int x, unsigned char y, bool double_width, bool double_height) {
-    char hi_mask;
+unsigned char spritesheet_get_index(unsigned char sprite_slot) {
+    unsigned char* spr_pointers;
+    unsigned char spr_pointer;
+    spd* spd_data = (spd*)SPRITE_AREA;
+
+    if(sprite_slot > VIC_SPR_COUNT-1) return -1;
+
+    spr_pointers = SCREEN_START + 0x03F8;
+
+    spr_pointer = spr_pointers[sprite_slot];
+
+    return spr_pointer - (unsigned char)((unsigned int)&(spd_data->sprites) / VIC_SPR_SIZE);
+}
+
+/* Load a sprite with SpritePad metadata byte
+ * @param sprite_slot - Which of the 8 sprite slots on the C64.
+ * @param sheet_idx - The sprite index in the sheet.
+ */
+unsigned char spritesheet_set_image(unsigned char sprite_slot, unsigned char sheet_idx) {
     unsigned char* spr_pointers;
     spd* spd_data = (spd*)SPRITE_AREA;
     spd_sprite* spd_sprite;
+    char hi_mask;
 
-    if(sprite_slot > 7) return EXIT_FAILURE;
-
-    spd_sprite = &(spd_data->sprites[sheet_idx]);
+    if(sprite_slot > VIC_SPR_COUNT-1) return EXIT_FAILURE;
 
     hi_mask = (1<<sprite_slot);
 
-    sprite_move(sprite_slot, x, y);
+    spd_sprite = &(spd_data->sprites[sheet_idx]);
 
     spr_pointers = SCREEN_START + 0x03F8;
 
@@ -113,6 +131,31 @@ unsigned char spritesheet_show(unsigned char sheet_idx, unsigned char sprite_slo
     else {
         *(char *)VIC_SPR_MCOLOR &= ~hi_mask;
     }
+
+    ((char *)VIC_SPR0_COLOR)[sprite_slot] = spd_sprite->metadata;
+
+    return EXIT_SUCCESS;
+}
+
+/* Load a sprite with SpritePad metadata byte
+ * @param sprite_slot - Which of the 8 sprite slots on the C64.
+ * @param sheet_idx - The sprite index in the sheet.
+ * @param x - X position
+ * @param y - Y position
+ * @param double_width - Double sprite width
+ * @param double_height - Double sprite height
+ */
+unsigned char spritesheet_show(unsigned char sprite_slot, unsigned char sheet_idx, unsigned int x, unsigned char y, bool double_width, bool double_height) {
+    char hi_mask;
+    unsigned char err;
+
+    if(err = spritesheet_set_image(sprite_slot, sheet_idx)) {
+        return err;
+    }
+
+    hi_mask = (1<<sprite_slot);
+
+    sprite_move(sprite_slot, x, y);
 
     if(double_width) {
         *(char *)VIC_SPR_EXP_X |= hi_mask;
@@ -128,9 +171,33 @@ unsigned char spritesheet_show(unsigned char sheet_idx, unsigned char sprite_slo
         *(char *)VIC_SPR_EXP_Y &= ~hi_mask;
     }
 
-    ((char *)VIC_SPR0_COLOR)[sprite_slot] = spd_sprite->metadata;
-
     *(char *)VIC_SPR_ENA |= hi_mask;
+
+    return EXIT_SUCCESS;
+}
+
+/* Advance the sprite to the next one in the sequence.
+ * @param sprite_slot - Which of the 8 sprite slots on the C64.
+ * @param sheet_idx_begin - The first sprite index in the sheet.
+ * @param sheet_idx_end - The last sprite index in the sheet.
+ */
+unsigned char spritesheet_next_image(unsigned char sprite_slot, unsigned char sheet_idx_begin, unsigned char sheet_idx_end) {
+    unsigned char current_idx = spritesheet_get_index(sprite_slot);
+    unsigned char err;
+
+    if(current_idx == -1) {
+        return EXIT_FAILURE;
+    }
+
+    current_idx++;
+
+    if(current_idx > sheet_idx_end || current_idx < sheet_idx_begin) {
+        current_idx = sheet_idx_begin;
+    }
+
+    if(err = spritesheet_set_image(sprite_slot, current_idx)) {
+        return err;
+    }
 
     return EXIT_SUCCESS;
 }

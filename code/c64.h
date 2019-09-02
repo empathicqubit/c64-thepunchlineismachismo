@@ -27,6 +27,9 @@
 #define CRAM_PTR         0xF3          // Pointer to current char in color RAM
 #define FREKZP           0xFB          // Five unused bytes
 
+#define SCREEN_BITMAP_WIDTH 320
+#define SCREEN_BITMAP_HEIGHT 200
+
 #define BASIC_BUF        0x200         // Location of command-line
 #define BASIC_BUF_LEN    89            // Maximum length of command-line
 
@@ -94,6 +97,7 @@
 #define VIC_CTRL2        0xD016
 
 #define VIC_SPR_SIZE     0x40
+#define VIC_SPR_COUNT     0x08
 
 #define JOY_ANY_MASK (JOY_UP_MASK | JOY_DOWN_MASK | JOY_LEFT_MASK | JOY_RIGHT_MASK | JOY_BTN_1_MASK)
 

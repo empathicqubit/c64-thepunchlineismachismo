@@ -10,6 +10,7 @@
 #include "sid.h"
 #include "c64.h"
 #include "sprite.h"
+#include "../resources/sprites/canada.h"
 
 extern const unsigned char r_text_loading[];
 extern const unsigned char r_text_loading2[];
@@ -42,21 +43,20 @@ void screen_init (bool use_graphics_charset) {
 
     // Update kernal
     *(unsigned char *)SCREEN_IO_HI_PTR = SCREEN_START >> 8;
-
-    clrscr();
 }
 
 unsigned char intro_screen() {
     unsigned char err;
     unsigned int spritex = 75;
     unsigned char spritey = 75;
-    unsigned int last = -1;
+    unsigned int last = 0;
     unsigned int now = clock();
     unsigned char textrepeat = 0;
     unsigned int loadtextlen = strlen(r_text_loading);
     unsigned char joyval;
 
     screen_init(false);
+    clrscr();
 
     puts(r_text_loading);
 
@@ -72,7 +72,7 @@ unsigned char intro_screen() {
         return EXIT_FAILURE;
     }
 
-    if(err = spritesheet_show(0, 0, spritex, spritey, true, true)) {
+    if(err = spritesheet_show(0, SPRITES_GUY_WALK_RIGHT_1, spritex, spritey, true, true)) {
         printf("There was a problem loading the sprites: %x\n", err);
         return EXIT_FAILURE;
     }
@@ -88,10 +88,22 @@ unsigned char intro_screen() {
         sid_play_frame();
 
         now = clock();
-        if(now > last + 2) {
+        if(now > last + 1) {
             last = now;
             spritex++;
-            sprite_move(0, spritex, spritey);
+            if(spritex > SCREEN_BITMAP_WIDTH) {
+                spritex = 0;
+            }
+
+            *(unsigned int*)BITMAP_START = spritex;
+
+            if(
+                (err = sprite_move(0, spritex, spritey))
+                || (err = spritesheet_next_image(0, SPRITES_GUY_WALK_RIGHT_0, SPRITES_GUY_WALK_RIGHT_END))
+                ) {
+                printf("There was a problem updating the sprite: %x\n", err);
+                return EXIT_FAILURE;
+            }
         }
 
         joyval = joy_read(0x01);
@@ -113,10 +125,12 @@ unsigned char main (void) {
     joy_install(&joy_static_stddrv);
 
     if(err = intro_screen()) {
+        screen_init(false);
         while(1);
     }
 
     screen_init(true);
+    clrscr();
 
     return EXIT_SUCCESS;
 }
