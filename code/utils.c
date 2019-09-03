@@ -3,7 +3,6 @@
 #include <string.h>
 #include <conio.h>
 #include "c64.h"
-#include "fastmem.h"
 
 /* Wait a number of milliseconds
  * @param duration - Milliseconds to wait

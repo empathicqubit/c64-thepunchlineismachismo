@@ -155,12 +155,12 @@ unsigned char update(level_state* state, unsigned int now) {
                 me->path_y += me->movement_speed;
             }
 
-            if(me->path_y > SCREEN_BITMAP_HEIGHT / 2) {
-                me->path_y = SCREEN_BITMAP_HEIGHT / 2;
+            if(me->path_y > SCREEN_SPRITE_BORDER_HEIGHT / 2) {
+                me->path_y = SCREEN_SPRITE_BORDER_HEIGHT / 2;
             }
 
-            if(me->path_x > SCREEN_BITMAP_WIDTH) {
-                me->path_x = SCREEN_BITMAP_WIDTH;
+            if(me->path_x > SCREEN_SPRITE_BORDER_WIDTH) {
+                me->path_x = SCREEN_SPRITE_BORDER_WIDTH;
             }
         }
     }
@@ -205,7 +205,8 @@ unsigned char render(level_state* state) {
         }
 
         spritesheet_set_image(me->sprite_no, sheet_idx);
-        sprite_move(me->sprite_no, me->path_x + (((SCREEN_BITMAP_HEIGHT / 2) - me->path_y) / 4), (me->path_y / 2) + 150);
+        //sprite_move(me->sprite_no, me->path_x, me->path_y);
+        sprite_move(me->sprite_no, SCREEN_SPRITE_BORDER_X_START + me->path_x + ((SCREEN_SPRITE_BORDER_HEIGHT / 2 - me->path_y) / 4), (me->path_y / 2) + (SCREEN_SPRITE_BORDER_HEIGHT * 3 / 4));
     }
 
 
