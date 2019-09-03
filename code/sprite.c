@@ -31,6 +31,16 @@ unsigned char sprite_move(unsigned char sprite_slot, unsigned int x, unsigned ch
     return EXIT_SUCCESS;
 }
 
+/* Get the next sprite in the sequence, based on the time since the action started
+ * @param action_time - jiffies since the action started
+ * @param frame_duration - jiffies per frame
+ * @param begin - first sprite in the animation
+ * @param end - last sprite in the animation
+ */
+unsigned char spritesheet_animation_next(unsigned int action_time, unsigned char frame_duration, unsigned char sheet_idx_begin, unsigned char sheet_idx_end) {
+    return sheet_idx_begin + ((action_time % (((sheet_idx_end - sheet_idx_begin) + 1) * frame_duration)) / frame_duration);
+}
+
 typedef struct {
     unsigned char sprite_data[63];
     unsigned char metadata;

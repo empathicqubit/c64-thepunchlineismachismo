@@ -3,9 +3,11 @@
 // C64 generic definitions. Stolen from Elite128
 //
 
-
 // ---------------------------------------------------------------------------
 // Zero page, Commodore stuff
+
+#define CPU_PORT                                    0x01
+#define CPU_PORT_IO_VISIBLE_CHARACTER_ROM_INVISIBLE 0x04
 
 #define VARTAB 0x2D
 #define MEMSIZE          0x37          // Pointer to highest BASIC RAM location (+1)
@@ -57,6 +59,8 @@
 
 // ---------------------------------------------------------------------------
 // I/O: VIC
+
+#define CHARACTER_ROM    0xD000
 
 #define VIC_SPR0_X       0xD000
 #define VIC_SPR0_Y       0xD001
@@ -200,6 +204,8 @@
 #define CIA1_ICR         0xDC0D        // Interrupt control register
 #define CIA1_CRA         0xDC0E        // Control register for timer A
 #define CIA1_CRB         0xDC0F        // Control register for timer B
+
+#define CIA1_CR_START_STOP 0x01
 
 #define CIA2_PRA_VIC_BANK0 0x02
 #define CIA2_PRA_VIC_BANK1 0x01

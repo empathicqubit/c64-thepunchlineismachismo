@@ -5,6 +5,14 @@
  */
 unsigned char sprite_move(unsigned char sprite_slot, unsigned int x, unsigned char y);
 
+/* Get the next sprite in the sequence, based on the time since the action started
+ * @param action_time - jiffies since the action started
+ * @param frame_duration - jiffies per frame
+ * @param sheet_idx_begin - first sprite in the animation
+ * @param sheet_idx_end - last sprite in the animation
+ */
+unsigned char spritesheet_animation_next(unsigned int action_time, unsigned char frame_duration, unsigned char sheet_idx_begin, unsigned char sheet_idx_end);
+
 /* Load a sprite sheet in SpritePad format
  * @param filename - The filename on disk
  * Must be aligned to 64 - 9 bytes, to leave room for the header and allow VIC-II

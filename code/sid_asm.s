@@ -6,7 +6,7 @@ _sid_init:
     lda #$00
     tax
     tay
-    jsr $c000
+    jsr SID_START
     rts
 
 _sid_play:
@@ -14,6 +14,6 @@ _sid_play:
     cmp $d012
     bne *-3
     inc $d020
-    jsr $c003
+    jsr SID_START+3
     dec $d020
     rts
