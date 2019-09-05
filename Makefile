@@ -3,6 +3,8 @@ SID_HIGHBYTE=B0
 BITMAP_START=E000
 SCREEN_START=C000
 
+CC65_VERSION=V2.18
+
 all: build
 
 build: $(D81)
@@ -10,12 +12,17 @@ build: $(D81)
 run: $(D81)
 	SOMMELIER=$$(which sommelier && echo -n " --scale=0.5 --x-display=:0" || echo) && echo $$SOMMELIER && $$SOMMELIER x64 +VICIIdsize -VICIIfilter 0 -model ntsc -iecdevice8 -sidenginemodel 256 -residsamp 0 $<
 
+dm: ./docker
+	docker-compose run build
+
 clean:
 	rm -rf resources/generated/
 	rm -rf machismo.prg
+	rm -rf docker
 	rm -rf $(D81)
 	rm -rf empty.d81
 	find . -iname '*.o' -delete
+	rm -rf *.pem
 	rm -rf machismo.lbl
 	rm -rf $(audio)
 
@@ -55,3 +62,20 @@ machismo.prg: linker.cfg $(code) resources/text.s $(charset) $(audio)
 	# You need to set the correct extension otherwise the output format will be SIDPlay!!!
 	gt2reloc $< $@.bin -N -W$(SID_HIGHBYTE) -B1 -D1 -ZFB -C0 -E0 -H0
 	mv $@.bin $@
+
+./docker: ./docker/cert.pem ./docker/cc65.tar.gz ./docker/goattracker.zip
+
+./docker/cert.pem: ./docker/.sentinel
+	security find-certificate -a -c " $$COMPANYNAME " -p > ./docker/cert.pem
+
+./docker/cc65.tar.gz: ./docker/.sentinel
+	wget $$(test -n "$$IGNORE_SSL" && echo "--no-check-certificate" || echo "") -O "$@" https://github.com/cc65/cc65/archive/${CC65_VERSION}.tar.gz || rm "$@"
+
+./docker/goattracker.zip: ./docker/.sentinel
+	wget $$(test -n "$$IGNORE_SSL" && echo "--no-check-certificate" || echo "") -O "$@" http://csdb.dk/getinternalfile.php/180091/GoatTracker_2.75.zip || rm "$@"
+
+# A single pattern rule will create all appropriate folders as required
+.PRECIOUS: %/.sentinel # otherwise make (annoyingly) deletes it
+%/.sentinel:
+	 mkdir -p ${@D}
+	 touch $@
