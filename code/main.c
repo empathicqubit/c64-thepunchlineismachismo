@@ -70,12 +70,10 @@ unsigned char main (void) {
         while(1);
     }
 
-    /*
     if(err = intro_screen()) {
         screen_init(false);
         while(1);
     }
-    */
 
     if(err = play_level()) {
         printf("There was a problem with the level %x\n", err);

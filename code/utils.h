@@ -1,3 +1,8 @@
+/* Check if system is PAL
+ * @return true if PAL
+ */
+bool pal_system(void);
+
 /* Wait a number of milliseconds
  * @param duration - Milliseconds to wait
  */

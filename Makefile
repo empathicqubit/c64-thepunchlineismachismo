@@ -1,7 +1,10 @@
+SHELL=sh
+
 D81=machismo.d81
 SID_HIGHBYTE=B0
 BITMAP_START=E000
 SCREEN_START=C000
+PAL_ROM ?=
 
 CC65_VERSION=V2.18
 
@@ -10,7 +13,7 @@ all: build
 build: $(D81)
 
 run: $(D81)
-	SOMMELIER=$$(which sommelier && echo -n " --scale=0.5 --x-display=:0" || echo) && echo $$SOMMELIER && $$SOMMELIER x64 +VICIIdsize -VICIIfilter 0 -model ntsc -iecdevice8 -sidenginemodel 256 -residsamp 0 $<
+	SOMMELIER=$$(which sommelier && echo -n " --scale=0.5 --x-display=:0" || echo) && echo $$SOMMELIER && $$SOMMELIER x64 +VICIIdsize -VICIIfilter 0 -model $(if $(PAL_ROM),pal,ntsc) -iecdevice8 -sidenginemodel 256 -residsamp 0 $<
 
 dm: ./docker
 	docker-compose run build
@@ -66,7 +69,7 @@ machismo.prg: linker.cfg $(code) resources/text.s $(charset) $(audio)
 ./docker: ./docker/cert.pem ./docker/cc65.tar.gz ./docker/goattracker.zip
 
 ./docker/cert.pem: ./docker/.sentinel
-	security find-certificate -a -c " $$COMPANYNAME " -p > ./docker/cert.pem
+	{ security find-certificate -a -c " $$COMPANYNAME " -p || echo "" } > ./docker/cert.pem
 
 ./docker/cc65.tar.gz: ./docker/.sentinel
 	wget $$(test -n "$$IGNORE_SSL" && echo "--no-check-certificate" || echo "") -O "$@" https://github.com/cc65/cc65/archive/${CC65_VERSION}.tar.gz || rm "$@"

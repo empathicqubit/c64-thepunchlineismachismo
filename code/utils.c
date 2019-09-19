@@ -4,6 +4,16 @@
 #include <conio.h>
 #include "c64.h"
 
+extern void updatepalntsc(void);
+
+/* Check if system is PAL
+ * @return true if PAL
+ */
+bool pal_system(void) {
+    updatepalntsc();
+    return *(bool *)PALFLAG;
+}
+
 /* Wait a number of milliseconds
  * @param duration - Milliseconds to wait
  */

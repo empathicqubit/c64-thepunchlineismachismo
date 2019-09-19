@@ -229,6 +229,7 @@ unsigned char play_level (void) {
     clrscr();
 
     printf("lame\n");
+    printf("%d\n", pal_system());
 
     state->guy = char_state_init(CHAR_TYPE_GUY);
 
