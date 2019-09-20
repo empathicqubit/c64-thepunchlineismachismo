@@ -9,3 +9,5 @@ node_modules/
 *.lbl
 *.pem
 docker/
+*.snd
+*.snz

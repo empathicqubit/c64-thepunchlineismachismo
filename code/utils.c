@@ -1,6 +1,8 @@
 #include <time.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <conio.h>
 #include "c64.h"
 
@@ -26,8 +28,6 @@ void wait (unsigned int duration) {
 /* Copies character ROM to RAM.
  */
 void character_init(void) {
-    unsigned char i;
-
     *(unsigned char *)CIA1_CRA &= ~CIA1_CR_START_STOP;
 
     // Inverse - make character ROM visible
@@ -67,3 +67,27 @@ void screen_init (bool use_graphics_charset) {
     bgcolor(COLOR_BLACK);
 }
 
+/** Get the file size in a stupid way.
+ * @param filename - The filename to check.
+ */
+int get_filesize(char filename[]) {
+    int total;
+    int chunk;
+    unsigned char* trash = malloc(256);
+    FILE* fp;
+
+    fp = fopen(filename, "rb");
+
+    if(!(total = fread(trash, 1, 1, fp))) {
+        fclose(fp);
+        return -1;
+    }
+
+    while(chunk = fread(trash, 1, 800000, fp)) {
+        total += chunk;
+    }
+
+    fclose(fp);
+
+    return total;
+}

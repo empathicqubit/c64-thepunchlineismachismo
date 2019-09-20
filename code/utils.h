@@ -1,3 +1,5 @@
+#include <stdbool.h>
+
 /* Check if system is PAL
  * @return true if PAL
  */
@@ -16,3 +18,8 @@ void screen_init (bool use_graphics_charset);
 /* Copies character ROM to RAM.
  */
 void character_init(void);
+
+/** Get the file size in a stupid way.
+ * @param filename - The filename to check.
+ */
+int get_filesize(char filename[]);

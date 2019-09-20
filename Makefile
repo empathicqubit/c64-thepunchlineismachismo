@@ -1,4 +1,5 @@
-SHELL=sh
+SHELL=busybox
+.SHELLFLAGS=sh -e -c
 
 D81=machismo.d81
 SID_HIGHBYTE=B0
@@ -7,6 +8,8 @@ SCREEN_START=C000
 PAL_ROM ?=
 
 CC65_VERSION=V2.18
+
+.ONESHELL:
 
 all: build
 
@@ -27,7 +30,9 @@ clean:
 	find . -iname '*.o' -delete
 	rm -rf *.pem
 	rm -rf machismo.lbl
-	rm -rf $(audio)
+	rm -rf $(music)
+	rm -rf resources/audio/*.snz
+	rm -rf $(sounds)
 
 copy-emu: /mnt/chromeos/removable/Chromebook/user/roms/machismo.d81
 
@@ -41,7 +46,11 @@ copy-c64: /mnt/chromeos/removable/C64/machismo.d81
 
 sprites := $(wildcard resources/sprites/*.spd)
 
-audio := $(patsubst %.sng,%.sid,$(wildcard resources/audio/*.sng))
+music := $(patsubst %.sng,%.sid,$(wildcard resources/audio/*.sng))
+
+sounds := $(sort $(patsubst %.ins,%.snd,$(wildcard resources/audio/*.ins)))
+
+sound_sizes=$(foreach sound,$(sounds),$(shell stat -c '%s' "$(sound)"))
 
 charset := $(wildcard resources/charset/*.s)
 
@@ -50,7 +59,7 @@ bitmaps := $(patsubst %.png,%.koa,$(wildcard resources/bitmap/*.png))
 
 code := $(wildcard code/*.c) $(wildcard code/*.s)
 
-machismo.d81: empty.d81 machismo.prg $(audio) $(bitmaps) $(sprites)
+machismo.d81: empty.d81 machismo.prg $(music) $(bitmaps) $(sprites) resources/audio/canada.snz
 	# Writes all files that have changed.
 	c1541 -attach $@ $(foreach content,$(filter-out $<,$?), -delete $(notdir $(content)) -write $(content) $(notdir $(content)))
 
@@ -58,8 +67,23 @@ empty.d81:
 	c1541 -format "canada,01" d81 $@
 	test ! -f "$(D81)" && cp empty.d81 $(D81) || exit 0
 
-machismo.prg: linker.cfg $(code) resources/text.s $(charset) $(audio)
-	sidsize=$$(stat -c'%s' $(audio) | sort -nr | head -1) && echo "SID SIZE $$sidsize" && cl65 -g -t c64 -C linker.cfg -Wa "-DSID_START=\$$$(SID_HIGHBYTE)00" -Wc "-DBITMAP_START=0x$(BITMAP_START)" -Wc "-DSCREEN_START=0x$(SCREEN_START)" "-DSID_START=0x$(SID_HIGHBYTE)00" -Wc "-DSID_SIZE=$$sidsize" -Wl "-Lnmachismo.lbl" -o $@ -O $(filter %.c %.s,$^)
+machismo.prg: linker.cfg $(code) resources/text.s $(charset) $(music)
+	sidsize=$$(stat -c'%s' $(music) | sort -nr | head -1) 
+	echo "SID SIZE $$sidsize"
+	cl65 -g -t c64 -C linker.cfg -Wa "-DSID_START=\$$$(SID_HIGHBYTE)00" -Wc "-DBITMAP_START=0x$(BITMAP_START)" -Wc "-DSCREEN_START=0x$(SCREEN_START)" "-DSID_START=0x$(SID_HIGHBYTE)00" -Wc "-DSID_SIZE=$$sidsize" -Wl "-Lnmachismo.lbl" -o $@ -O $(filter %.c %.s,$^)
+
+resources/audio/canada.snz: $(sounds)
+	sound_header="\x$$(printf '%x' $(words $(sounds)))"
+	size_total=0
+	# This is not okay, sh.
+	for each in $(sound_sizes) ; do
+	    sound_header="$${sound_header}\x$$(printf '%x' "$$size_total")"
+	    size_total=$$((size_total + each))
+	done
+	printf "$$sound_header" | cat - $(sounds) > "$@"
+
+%.snd: %.ins
+	ins2snd2 "$<" "$@" -b
 
 %.sid: %.sng
 	# You need to set the correct extension otherwise the output format will be SIDPlay!!!

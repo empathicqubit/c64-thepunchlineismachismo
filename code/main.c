@@ -20,6 +20,8 @@ unsigned char intro_screen() {
     unsigned char err;
     unsigned int now = clock();
     unsigned char joyval;
+    unsigned char kbchar;
+    unsigned char* snz_pointer;
 
     screen_init(false);
     clrscr();
@@ -28,6 +30,13 @@ unsigned char intro_screen() {
 
     if(err = sid_load("intro.sid")) {
         printf("There was a problem loading the SID: %x\n", err);
+        return EXIT_FAILURE;
+    }
+
+    puts(r_text_loading2);
+
+    if(!(snz_pointer = snz_load("canada.snz", &err))) {
+        printf("There was a problem loading the sounds: %x\n", err);
         return EXIT_FAILURE;
     }
 
@@ -40,6 +49,17 @@ unsigned char intro_screen() {
 
     while(1) {
         sid_play_frame();
+
+        kbchar = 0x00;
+        if(kbhit()) {
+            kbchar = cgetc();
+        }
+
+        if(kbchar) {
+            if(kbchar == 'p') {
+                sid_play_sound(snz_pointer, 0, 2);
+            }
+        }
 
         joyval = joy_read(0x01);
         if(joyval & JOY_ANY_MASK) {
