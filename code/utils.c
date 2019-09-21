@@ -1,10 +1,13 @@
 #include <time.h>
 #include <stdbool.h>
 #include <string.h>
+#include <6502.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <conio.h>
 #include "c64.h"
+
+#define IRQ_STACK_SIZE 128
 
 extern void updatepalntsc(void);
 
@@ -47,7 +50,7 @@ void screen_init (bool use_graphics_charset) {
     unsigned char screen_ptr = ((SCREEN_START % VIC_BANK_SIZE) / VIC_VIDEO_ADR_SCREEN_DIVISOR) << 4;
 
     // Switch to bank 3
-    *(unsigned char *)CIA2_PRA &= 0x00;
+    *(unsigned char *)CIA2_PRA &= ~3;
 
     // Switch to screen memory
     *(unsigned char *)VIC_VIDEO_ADR &= ~(VIC_VIDEO_ADR_SCREEN_PTR_MASK);
@@ -90,4 +93,14 @@ int get_filesize(char filename[]) {
     fclose(fp);
 
     return total;
+}
+
+unsigned char* irq_stack;
+
+void setup_irq_handler(unsigned char (*handler)(void)) {
+    if(!irq_stack) {
+        irq_stack = malloc(IRQ_STACK_SIZE);
+    }
+
+    set_irq(handler, irq_stack, IRQ_STACK_SIZE);
 }

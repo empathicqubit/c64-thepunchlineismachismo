@@ -23,3 +23,5 @@ void character_init(void);
  * @param filename - The filename to check.
  */
 int get_filesize(char filename[]);
+
+void setup_irq_handler(void* handler);

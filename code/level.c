@@ -1,12 +1,14 @@
 #include <joystick.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <6502.h>
 #include <conio.h>
 #include <time.h>
 #include <stdbool.h>
 #include "utils.h"
 #include "c64.h"
 #include "sprite.h"
+#include "sid.h"
 #include "../resources/sprites/canada.h"
 
 enum {
@@ -62,11 +64,15 @@ struct level_screen {
 
 typedef struct level_state level_state;
 struct level_state {
+    unsigned char* snz; // Pointer to the loaded sounds
     unsigned char screen_index; // Which screen are we looking at.
     char_state* guy; // State for our guy gets put here so it's easier
                     // To find him, since we deal with him a lot.
     level_screen* screens[16];
 };
+
+level_state* state;
+unsigned int now; 
 
 char_state* char_state_init(char_type c) {
     char_state* state = calloc(1, sizeof(char_state));
@@ -80,6 +86,7 @@ char_state* char_state_init(char_type c) {
     else if(c == CHAR_TYPE_MOOSE) {
         state->default_sprite = SPRITES_MOOSE;
         state->movement_speed = 2;
+        state->hitpoints = 5;
         state->sprite_no = 1;
         state->path_x = 160;
         state->path_y = 25;
@@ -88,13 +95,17 @@ char_state* char_state_init(char_type c) {
     return state;
 }
 
-unsigned char process_input(level_state* state) {
+unsigned char process_input() {
     unsigned char joyval = joy_read(0x01);
     char_state* guy = state->guy;
     guy->flags &= ~CHAR_FLAG_MOVING;
 
     if(joyval & CHAR_FLAG_DIRECTION) {
         guy->flags &= ~CHAR_FLAG_DIRECTION;
+        if(joyval & JOY_BTN_1_MASK) {
+            guy->flags |= CHAR_FLAG_ATTACKING;
+        }
+
         if(joyval & JOY_UP_MASK) {
             guy->flags |= CHAR_FLAG_MOVING | CHAR_FLAG_DIRECTION_UP;
         }
@@ -111,18 +122,22 @@ unsigned char process_input(level_state* state) {
     }
 
     if(joyval & JOY_BTN_1_MASK) {
-        guy->flags |= CHAR_FLAG_MOVING | CHAR_FLAG_ATTACKING;
+        guy->flags |= CHAR_FLAG_ATTACKING;
     }
 
     return EXIT_SUCCESS;
 }
 
-unsigned char update(level_state* state, unsigned int now) {
+unsigned char update(void) {
     unsigned char i;
+    unsigned char j;
     level_screen* screen = state->screens[state->screen_index];
+    char_state* other;
 
     for(i = 0; i < 16; i++) {
         char_state* me = screen->characters[i];
+
+        if(!me) break;
 
         // Reconcile flags and last_flags
         if((me->flags & CHAR_FLAG_ACTION) != (me->last_flags & CHAR_FLAG_ACTION)) {
@@ -130,6 +145,23 @@ unsigned char update(level_state* state, unsigned int now) {
         }
 
         me->last_flags = me->flags;
+
+        if((me->flags & CHAR_FLAG_ATTACKING) && (now - me->action_start > 30) && (now - me->action_start < 45)) {
+
+            for(j = 0; j < 16; j++) {
+                other = screen->characters[j];
+                if(!other || other == me) {
+                    continue;
+                }
+
+                if(
+                        other->path_x - 20 < me->path_x && me->path_x < other->path_x + 20
+                        && other->path_y - 20 < me->path_y && me->path_y < other->path_y + 20
+                        ) {
+                    other->hitpoints--;
+                }
+            }
+        }
 
         if(me->flags & CHAR_FLAG_MOVING) {
             if(me->flags & CHAR_FLAG_DIRECTION_RIGHT) {
@@ -168,18 +200,43 @@ unsigned char update(level_state* state, unsigned int now) {
     return EXIT_SUCCESS;
 }
 
-unsigned char render(level_state* state) {
-    unsigned char i, sheet_idx, flags;
+unsigned char render() {
+    unsigned char i, sheet_idx, flags, kbchar;
     char_state* me;
     unsigned int action_time;
-    unsigned int now = clock();
 
     level_screen* screen = state->screens[state->screen_index];
+
+    // BEGIN DEBUG STUFF
+    gotoxy(0,0);
+    printf("NOW: %x ATK: %x TIM: %x STR: %x ", now, state->guy->flags & CHAR_FLAG_ATTACKING, now - state->guy->action_start, state->guy->action_start);
+
+    if((me->flags & CHAR_FLAG_ATTACKING) && (now - me->action_start > 30) && (now - me->action_start < 45)) {
+        puts("pow ");
+    }
+
+    puts("|");
+
+    kbchar = 0x00;
+    if(kbhit()) {
+        kbchar = cgetc();
+    }
+
+    if(kbchar) {
+        if(kbchar == 'p') {
+            sid_play_sound(state->snz, rand() % 2, 2);
+        }
+    }
+    // END DEBUG STUFF
 
     for(i = 0; i < 16; i++) {
         me = screen->characters[i];
 
         if(!me) break;
+
+        if(me != state->guy) {
+            printf("%x|", me->hitpoints);
+        }
 
         sheet_idx = me->default_sprite;
 
@@ -213,23 +270,44 @@ unsigned char render(level_state* state) {
     return EXIT_SUCCESS;
 }
 
+unsigned char my_irq_handler(void) {
+    now++;
+
+    if(*(unsigned char *)VIC_IRR & VIC_IRQ_RASTER) {
+        sid_play_frame();
+        update();
+
+        return IRQ_HANDLED;
+    }
+
+    return IRQ_NOT_HANDLED;
+}
+
 unsigned char play_level (void) {
-    unsigned int now, elapsed;
+    unsigned int elapsed;
     char_state* me;
     unsigned char err, i;
 
     unsigned int previous = clock();
     unsigned int lag = 0;
-
-    level_state* state = calloc(1, sizeof(level_state));
-
     level_screen* screen = calloc(1, sizeof(level_screen));
+
+    state = calloc(1, sizeof(level_state));
+
+    if(!(state->snz = snz_load("canada.snz", &err))) {
+        printf("Sound load error: %x\n", err);
+        return EXIT_FAILURE;
+    }
+
+    if(err = sid_load("intro.sid")) {
+        printf("SID load error: %x\n", err);
+        return EXIT_FAILURE;
+    }
 
     screen_init(false);
     clrscr();
 
-    printf("lame\n");
-    printf("%d\n", pal_system());
+    setup_irq_handler(&my_irq_handler);
 
     state->guy = char_state_init(CHAR_TYPE_GUY);
 
@@ -253,24 +331,14 @@ unsigned char play_level (void) {
 
     while (true)
     {
-        now = clock();
-        elapsed = now - previous;
-
-        previous = now;
-        lag += elapsed;
-
-        process_input(state);
-
-        while (lag >= 1)
-        {
-            if(err = update(state, now)) {
-                printf("Error updating the game state: %x\n", err);
-                return EXIT_FAILURE;
-            }
-            lag--;
+        // World update was originally in this loop, but doing it here
+        // blew up the complexity of the program too much.
+        // Interrupts are simpler and guaranteed.
+        process_input();
+        if(err = render()) {
+            printf("Error rendering the game state: %x\n", err);
+            return EXIT_FAILURE;
         }
-
-        render(state);
     }
 
 }

@@ -2,6 +2,8 @@
 //
 // C64 generic definitions. Stolen from Elite128
 //
+// I prefer using this over some of the builtin structs because it is easier to 
+// match to assembly code docs.
 
 // ---------------------------------------------------------------------------
 // Zero page, Commodore stuff
@@ -64,6 +66,8 @@
 #define BRKVec           0x0316
 #define NMIVec           0x0318
 
+#define IRQVec_DEFAULT_ISR   0xEA31
+
 // ---------------------------------------------------------------------------
 // Screen size
 
@@ -119,6 +123,7 @@
 #define JOY_ANY_MASK (JOY_UP_MASK | JOY_DOWN_MASK | JOY_LEFT_MASK | JOY_RIGHT_MASK | JOY_BTN_1_MASK)
 
 #define VIC_CTRL1_BITMAP_ON     0x20
+#define VIC_CTRL1_HLINE_MSB     0xF0
 #define VIC_CTRL2_MULTICOLOR_ON 0x10
 
 #define VIC_HLINE        0xD012
@@ -151,6 +156,11 @@
 
 #define VIC_IRR          0xD019        // Interrupt request register
 #define VIC_IMR          0xD01A        // Interrupt mask register
+
+#define VIC_IRQ_RASTER 0x01
+#define VIC_IRQ_SPRITE_BG 0x02
+#define VIC_IRQ_SPRITE_SPRITE 0x04
+#define VIC_IRQ_LIGHT_PEN 0x08
 
 #define VIC_BORDERCOLOR  0xD020
 #define VIC_BG_COLOR0    0xD021

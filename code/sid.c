@@ -85,4 +85,3 @@ unsigned char sid_stop(void) {
 void sid_play_frame (void) {
     sid_play();
 }
-

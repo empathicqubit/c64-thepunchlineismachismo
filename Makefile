@@ -34,9 +34,9 @@ clean:
 	rm -rf resources/audio/*.snz
 	rm -rf $(sounds)
 
-copy-emu: /mnt/chromeos/removable/Chromebook/user/roms/machismo.d81
+cp-emu: /mnt/chromeos/removable/Chromebook/user/roms/machismo.d81
 
-copy-c64: /mnt/chromeos/removable/C64/machismo.d81
+cp-c64: /mnt/chromeos/removable/C64/machismo.d81
 
 /mnt/chromeos/removable/Chromebook/user/roms/machismo.d81: $(D81)
 	cp $< $@
@@ -70,7 +70,7 @@ empty.d81:
 machismo.prg: linker.cfg $(code) resources/text.s $(charset) $(music)
 	sidsize=$$(stat -c'%s' $(music) | sort -nr | head -1) 
 	echo "SID SIZE $$sidsize"
-	cl65 -g -t c64 -C linker.cfg -Wa "-DSID_START=\$$$(SID_HIGHBYTE)00" -Wc "-DBITMAP_START=0x$(BITMAP_START)" -Wc "-DSCREEN_START=0x$(SCREEN_START)" "-DSID_START=0x$(SID_HIGHBYTE)00" -Wc "-DSID_SIZE=$$sidsize" -Wl "-Lnmachismo.lbl" -o $@ -O $(filter %.c %.s,$^)
+	cl65 -Osir -g -t c64 -C linker.cfg -Wa "-DSID_START=\$$$(SID_HIGHBYTE)00" -Wc "-DBITMAP_START=0x$(BITMAP_START)" -Wc "-DSCREEN_START=0x$(SCREEN_START)" "-DSID_START=0x$(SID_HIGHBYTE)00" -Wc "-DSID_SIZE=$$sidsize" -Wl "-Lnmachismo.lbl" -o $@ -O $(filter %.c %.s,$^)
 
 resources/audio/canada.snz: $(sounds)
 	sound_header="\x$$(printf '%x' $(words $(sounds)))"
@@ -87,7 +87,7 @@ resources/audio/canada.snz: $(sounds)
 
 %.sid: %.sng
 	# You need to set the correct extension otherwise the output format will be SIDPlay!!!
-	gt2reloc $< $@.bin -N -W$(SID_HIGHBYTE) -B1 -D1 -ZFB -C0 -E0 -H0
+	gt2reloc $< $@.bin -N -W$(SID_HIGHBYTE) -B1 -D1 -ZFB -C0 -E0 -H0 -R1
 	mv $@.bin $@
 
 ./docker: ./docker/cert.pem ./docker/cc65.tar.gz ./docker/goattracker.zip
