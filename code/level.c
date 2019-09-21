@@ -33,12 +33,15 @@ enum {
     CHAR_FLAG_DYING = 0x40,
 
     CHAR_FLAG_ACTION = CHAR_FLAG_MOVING | CHAR_FLAG_ATTACKING | CHAR_FLAG_DYING, // directions and attack
-
-    CHAR_FLAG_INVINCIBLE = 0x80, // Can't be hit
-    CHAR_FLAG_TOXIC = 0x100, // Can deal damage by touch alone
-    CHAR_FLAG_INCAPACITATED = 0x200, // Dazed or stunned
 };
-typedef unsigned int char_flag;
+typedef unsigned char char_action_flag;
+
+enum {
+    CHAR_FLAG_INVINCIBLE = 0x01, // Can't be hit
+    CHAR_FLAG_TOXIC = 0x02, // Can deal damage by touch alone
+    CHAR_FLAG_INCAPACITATED = 0x04, // Dazed or stunned
+};
+typedef unsigned char char_status_flag;
 
 typedef struct char_state char_state;
 struct char_state {
@@ -54,9 +57,13 @@ struct char_state {
     unsigned char hitpoints; // How many hits until the character dies
     unsigned char attackpoints; // How many hits a character deals. Most of the time this is 1.
     unsigned int action_start; // Jiffy time the action started.
+    unsigned int status_start; // Jiffy time the status started.
 
-    char_flag flags; // Flags now
-    char_flag last_flags; // Flags at the last tick
+    char_action_flag action_flags; // Flags now
+    char_action_flag last_action_flags; // Flags at the last tick
+
+    char_status_flag status_flags; // Flags now
+    char_status_flag last_status_flags; // Flags at the last tick
 };
 
 typedef struct level_screen level_screen;
@@ -100,31 +107,31 @@ char_state* char_state_init(char_type c) {
 unsigned char process_input() {
     unsigned char joyval = joy_read(0x01);
     char_state* guy = state->guy;
-    guy->flags &= ~CHAR_FLAG_MOVING;
+    guy->action_flags &= ~CHAR_FLAG_MOVING;
 
     if(joyval & CHAR_FLAG_DIRECTION) {
-        guy->flags &= ~CHAR_FLAG_DIRECTION;
+        guy->action_flags &= ~CHAR_FLAG_DIRECTION;
         if(joyval & JOY_BTN_1_MASK) {
-            guy->flags |= CHAR_FLAG_ATTACKING;
+            guy->action_flags |= CHAR_FLAG_ATTACKING;
         }
 
         if(joyval & JOY_UP_MASK) {
-            guy->flags |= CHAR_FLAG_MOVING | CHAR_FLAG_DIRECTION_UP;
+            guy->action_flags |= CHAR_FLAG_MOVING | CHAR_FLAG_DIRECTION_UP;
         }
         else if(joyval & JOY_DOWN_MASK) {
-            guy->flags |= CHAR_FLAG_MOVING | CHAR_FLAG_DIRECTION_DOWN;
+            guy->action_flags |= CHAR_FLAG_MOVING | CHAR_FLAG_DIRECTION_DOWN;
         }
 
         if(joyval & JOY_LEFT_MASK) {
-            guy->flags |= CHAR_FLAG_MOVING | CHAR_FLAG_DIRECTION_LEFT;
+            guy->action_flags |= CHAR_FLAG_MOVING | CHAR_FLAG_DIRECTION_LEFT;
         }
         else if(joyval & JOY_RIGHT_MASK) {
-            guy->flags |= CHAR_FLAG_MOVING | CHAR_FLAG_DIRECTION_RIGHT;
+            guy->action_flags |= CHAR_FLAG_MOVING | CHAR_FLAG_DIRECTION_RIGHT;
         }
     }
 
     if(joyval & JOY_BTN_1_MASK) {
-        guy->flags |= CHAR_FLAG_ATTACKING;
+        guy->action_flags |= CHAR_FLAG_ATTACKING;
     }
 
     return EXIT_SUCCESS;
@@ -133,6 +140,7 @@ unsigned char process_input() {
 unsigned char update(void) {
     unsigned char i;
     unsigned char j;
+    unsigned int action_time, status_time;
     char_state* other;
     level_screen* screen = state->screens[state->screen_index];
 
@@ -142,22 +150,37 @@ unsigned char update(void) {
         if(!me) continue;
 
         // Reconcile flags and last_flags
-        if((me->flags & CHAR_FLAG_ACTION) != (me->last_flags & CHAR_FLAG_ACTION)) {
+        if(me->action_flags != me->last_action_flags) {
             me->action_start = now;
-        }
 
-        me->last_flags = me->flags;
-
-        if(me->flags & CHAR_FLAG_DYING) {
-            if(now - me->action_start > 60) {
-                sprite_hide(me->sprite_slot);
-                screen->characters[i] = NULL;
-                free(me);
+            if(me->action_flags & CHAR_FLAG_ATTACKING && !(me->last_action_flags & CHAR_FLAG_ATTACKING)) {
+                sid_play_sound(state->snz, 0, 2);
             }
         }
 
-        if(me->flags & CHAR_FLAG_ATTACKING) {
-            if((now - me->action_start > 30) && (now - me->action_start < 45)) {
+        me->last_action_flags = me->action_flags;
+
+        if(me->status_flags != me->last_status_flags) {
+            me->status_start = now;
+        }
+
+        me->last_status_flags = me->status_flags;
+
+        action_time = now - me->action_start;
+        status_time = now - me->status_start;
+
+        if((me->status_flags & CHAR_FLAG_INVINCIBLE) && status_time > 90) {
+            me->status_flags &= ~CHAR_FLAG_INVINCIBLE;
+        }
+
+        if((me->action_flags & CHAR_FLAG_DYING) && action_time > 60) {
+            sprite_hide(me->sprite_slot);
+            screen->characters[i] = NULL;
+            free(me);
+        }
+
+        if(me->action_flags & CHAR_FLAG_ATTACKING) {
+            if(action_time > 10 && action_time < 20) {
                 for(j = 0; j < 16; j++) {
                     other = screen->characters[j];
                     if(!other || other == me) {
@@ -165,28 +188,30 @@ unsigned char update(void) {
                     }
 
                     if(
-                            other->path_x - 20 < me->path_x && me->path_x < other->path_x + 20
+                            !(other->action_flags & CHAR_FLAG_DYING) && !(other->status_flags & CHAR_FLAG_INVINCIBLE)
+                            && other->path_x - 20 < me->path_x && me->path_x < other->path_x + 20
                             && other->path_y - 20 < me->path_y && me->path_y < other->path_y + 20
                             ) {
                         other->hitpoints--;
+                        other->status_flags |= CHAR_FLAG_INVINCIBLE;
 
                         if(!other->hitpoints) {
-                            other->flags &= ~CHAR_FLAG_ACTION;
-                            other->flags |= CHAR_FLAG_DYING;
+                            other->action_flags &= ~CHAR_FLAG_ACTION;
+                            other->action_flags |= CHAR_FLAG_DYING;
                         }
                     }
                 }
             }
-            else if(now - me->action_start > 60) {
-                me->flags &= ~CHAR_FLAG_ATTACKING;
+            else if(action_time > 30) {
+                me->action_flags &= ~CHAR_FLAG_ATTACKING;
             }
         }
 
-        if(me->flags & CHAR_FLAG_MOVING) {
-            if(me->flags & CHAR_FLAG_DIRECTION_RIGHT) {
+        if(me->action_flags & CHAR_FLAG_MOVING) {
+            if(me->action_flags & CHAR_FLAG_DIRECTION_RIGHT) {
                 me->path_x += me->movement_speed;
             }
-            else if(me->flags & CHAR_FLAG_DIRECTION_LEFT) {
+            else if(me->action_flags & CHAR_FLAG_DIRECTION_LEFT) {
                 if(me->path_x >= me->movement_speed) {
                     me->path_x -= me->movement_speed;
                 }
@@ -194,7 +219,7 @@ unsigned char update(void) {
                     me->path_x = 0;
                 }
             }
-            else if(me->flags & CHAR_FLAG_DIRECTION_UP) {
+            else if(me->action_flags & CHAR_FLAG_DIRECTION_UP) {
                 if(me->path_y >= me->movement_speed) {
                     me->path_y -= me->movement_speed;
                 }
@@ -202,7 +227,7 @@ unsigned char update(void) {
                     me->path_y = 0;
                 }
             }
-            else if(me->flags & CHAR_FLAG_DIRECTION_DOWN) {
+            else if(me->action_flags & CHAR_FLAG_DIRECTION_DOWN) {
                 me->path_y += me->movement_speed;
             }
 
@@ -220,7 +245,7 @@ unsigned char update(void) {
 }
 
 unsigned char render() {
-    unsigned char i, sheet_idx, flags, kbchar;
+    unsigned char i, sheet_idx, action_flags, kbchar;
     char_state* me;
     unsigned int action_time;
 
@@ -228,7 +253,6 @@ unsigned char render() {
 
     // BEGIN DEBUG STUFF
     gotoxy(0,20);
-    printf("NOW: %x ATK: %x TIM: %x STR: %x X: %x Y: %x\n", now, state->guy->flags & CHAR_FLAG_ATTACKING, now - state->guy->action_start, state->guy->action_start, state->guy->path_x, state->guy->path_y);
 
     kbchar = 0x00;
     if(kbhit()) {
@@ -248,25 +272,31 @@ unsigned char render() {
         if(!me) continue;
 
         if(me != state->guy) {
-            printf("X: %x Y: %x HP: %x", me->path_x, me->path_y, me->hitpoints);
+            printf("X: %x Y: %x HP: %x\n", me->path_x, me->path_y, me->hitpoints);
         }
 
         sheet_idx = me->default_sprite;
 
-        flags = me->flags;
+        action_flags = me->action_flags;
 
         action_time = now - me->action_start;
 
-        if(flags & CHAR_FLAG_DIRECTION_RIGHT) {
-            if(flags & CHAR_FLAG_MOVING) {
+        if(action_flags & CHAR_FLAG_DIRECTION_RIGHT) {
+            if(action_flags & CHAR_FLAG_ATTACKING) {
+                sheet_idx = spritesheet_animation_next(action_time, 10, SPRITES_GUY_ATTACK_RIGHT_0, SPRITES_GUY_ATTACK_RIGHT_END);
+            }
+            else if(action_flags & CHAR_FLAG_MOVING) {
                 sheet_idx = spritesheet_animation_next(action_time, 5, SPRITES_GUY_WALK_RIGHT_0, SPRITES_GUY_WALK_RIGHT_END);
             }
             else {
                 sheet_idx = SPRITES_GUY_WALK_RIGHT_0;
             }
         }
-        else if(flags & CHAR_FLAG_DIRECTION_LEFT) {
-            if(flags & CHAR_FLAG_MOVING) {
+        else if(action_flags & CHAR_FLAG_DIRECTION_LEFT) {
+            if(action_flags & CHAR_FLAG_ATTACKING) {
+                sheet_idx = spritesheet_animation_next(action_time, 10, SPRITES_GUY_ATTACK_LEFT_0, SPRITES_GUY_ATTACK_LEFT_END);
+            }
+            else if(action_flags & CHAR_FLAG_MOVING) {
                 sheet_idx = spritesheet_animation_next(action_time, 5, SPRITES_GUY_WALK_LEFT_0, SPRITES_GUY_WALK_LEFT_END);
             }
             else {
