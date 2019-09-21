@@ -7,11 +7,12 @@
  * @param sprite_slot - Which of the 8 sprite slots on the C64.
  * @param x - X position
  * @param y - Y position
+ * @return If we were successful or not
  */
 unsigned char sprite_move(unsigned char sprite_slot, unsigned int x, unsigned char y) {
-    char hi_mask = (1<<sprite_slot);
+    unsigned char hi_mask = (1<<sprite_slot);
 
-    char* hi = VIC_SPR_HI_X;
+    unsigned char* hi = VIC_SPR_HI_X;
 
     unsigned char* sprite_x = VIC_SPR0_X + sprite_slot * 2;
     unsigned char* sprite_y = VIC_SPR0_Y + sprite_slot * 2;
@@ -118,6 +119,7 @@ unsigned char spritesheet_get_index(unsigned char sprite_slot) {
 /* Load a sprite with SpritePad metadata byte
  * @param sprite_slot - Which of the 8 sprite slots on the C64.
  * @param sheet_idx - The sprite index in the sheet.
+ * @return If we were successful or not
  */
 unsigned char spritesheet_set_image(unsigned char sprite_slot, unsigned char sheet_idx) {
     unsigned char* spr_pointers;
@@ -147,6 +149,21 @@ unsigned char spritesheet_set_image(unsigned char sprite_slot, unsigned char she
     return EXIT_SUCCESS;
 }
 
+/** Hide the sprite in the slot
+ * @param sprite_slot - The sprite to hide
+ * @return If we were successful or not
+ */
+unsigned char sprite_hide(unsigned char sprite_slot) {
+    char hi_mask;
+    if(sprite_slot > VIC_SPR_COUNT-1) return EXIT_FAILURE;
+
+    hi_mask = (1<<sprite_slot);
+
+    *(unsigned char *)VIC_SPR_ENA &= ~hi_mask;
+
+    return EXIT_SUCCESS;
+}
+
 /* Load a sprite with SpritePad metadata byte
  * @param sprite_slot - Which of the 8 sprite slots on the C64.
  * @param sheet_idx - The sprite index in the sheet.
@@ -154,6 +171,7 @@ unsigned char spritesheet_set_image(unsigned char sprite_slot, unsigned char she
  * @param y - Y position
  * @param double_width - Double sprite width
  * @param double_height - Double sprite height
+ * @return If we were successful or not
  */
 unsigned char spritesheet_show(unsigned char sprite_slot, unsigned char sheet_idx, unsigned int x, unsigned char y, bool double_width, bool double_height) {
     char hi_mask;
@@ -165,23 +183,25 @@ unsigned char spritesheet_show(unsigned char sprite_slot, unsigned char sheet_id
 
     hi_mask = (1<<sprite_slot);
 
-    sprite_move(sprite_slot, x, y);
+    if(err = sprite_move(sprite_slot, x, y)) {
+        return err;
+    }
 
     if(double_width) {
-        *(char *)VIC_SPR_EXP_X |= hi_mask;
+        *(unsigned char *)VIC_SPR_EXP_X |= hi_mask;
     }
     else {
-        *(char *)VIC_SPR_EXP_X &= ~hi_mask;
+        *(unsigned char *)VIC_SPR_EXP_X &= ~hi_mask;
     }
 
     if(double_height) {
-        *(char *)VIC_SPR_EXP_Y |= hi_mask;
+        *(unsigned char *)VIC_SPR_EXP_Y |= hi_mask;
     }
     else {
-        *(char *)VIC_SPR_EXP_Y &= ~hi_mask;
+        *(unsigned char *)VIC_SPR_EXP_Y &= ~hi_mask;
     }
 
-    *(char *)VIC_SPR_ENA |= hi_mask;
+    *(unsigned char *)VIC_SPR_ENA |= hi_mask;
 
     return EXIT_SUCCESS;
 }

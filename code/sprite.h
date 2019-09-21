@@ -2,6 +2,7 @@
  * @param sprite_slot - Which of the 8 sprite slots on the C64.
  * @param x - X position
  * @param y - Y position
+ * @return If we were successful or not
  */
 unsigned char sprite_move(unsigned char sprite_slot, unsigned int x, unsigned char y);
 
@@ -28,6 +29,7 @@ unsigned char spritesheet_load(char filename[]);
  * @param y - Y position
  * @param double_width - Double sprite width
  * @param double_height - Double sprite height
+ * @return If we were successful or not
  */
 unsigned char spritesheet_show(unsigned char sprite_slot, unsigned char sheet_idx, unsigned int x, unsigned char y, bool dbl_width, bool dbl_height);
 
@@ -41,5 +43,12 @@ unsigned char spritesheet_next_image(unsigned char sprite_slot, unsigned char sh
 /* Load a sprite with SpritePad metadata byte
  * @param sprite_slot - Which of the 8 sprite slots on the C64.
  * @param sheet_idx - The sprite index in the sheet.
+ * @return If we were successful or not
  */
 unsigned char spritesheet_set_image(unsigned char sprite_slot, unsigned char sheet_idx);
+
+/** Hide the sprite in the slot
+ * @param sprite_slot - The sprite to hide
+ * @return If we were successful or not
+ */
+unsigned char sprite_hide(unsigned char sprite_slot);
