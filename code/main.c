@@ -5,6 +5,7 @@
 #include <time.h>
 #include <joystick.h>
 #include <conio.h>
+#include <6502.h>
 #include "koala.h"
 #include "sid.h"
 #include "c64.h"
@@ -15,6 +16,18 @@
 extern const unsigned char r_text_loading[];
 extern const unsigned char r_text_loading2[];
 extern const unsigned char r_text_loading3[];
+
+unsigned char my_irq_handler(void) {
+    if(*(unsigned char *)VIC_IRR & VIC_IRQ_RASTER) {
+        *(unsigned char*)VIC_IRR |= VIC_IRQ_RASTER;
+
+        sid_play_frame();
+
+        return IRQ_HANDLED;
+    }
+
+    return IRQ_NOT_HANDLED;
+}
 
 unsigned char intro_screen() {
     unsigned char err;
@@ -40,14 +53,16 @@ unsigned char intro_screen() {
         return EXIT_FAILURE;
     }
 
-    while(1) {
-        sid_play_frame();
+    setup_irq_handler(&my_irq_handler);
 
+    while(1) {
         joyval = joy_read(0x01);
         if(joyval & JOY_ANY_MASK) {
             break;
         }
     }
+
+    setup_irq_handler(NULL);
 
     sid_stop();
 
@@ -72,12 +87,10 @@ unsigned char main (void) {
         while(1);
     }
 
-    /*
     if(err = intro_screen()) {
         screen_init(false);
         while(1);
     }
-    */
 
     if(err = play_level()) {
         printf("Level error: %x\n", err);
