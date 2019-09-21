@@ -131,8 +131,8 @@ unsigned char process_input() {
 unsigned char update(void) {
     unsigned char i;
     unsigned char j;
-    level_screen* screen = state->screens[state->screen_index];
     char_state* other;
+    level_screen* screen = state->screens[state->screen_index];
 
     for(i = 0; i < 16; i++) {
         char_state* me = screen->characters[i];
@@ -208,7 +208,7 @@ unsigned char render() {
     level_screen* screen = state->screens[state->screen_index];
 
     // BEGIN DEBUG STUFF
-    gotoxy(0,0);
+    gotoxy(0,20);
     printf("NOW: %x ATK: %x TIM: %x STR: %x ", now, state->guy->flags & CHAR_FLAG_ATTACKING, now - state->guy->action_start, state->guy->action_start);
 
     if((me->flags & CHAR_FLAG_ATTACKING) && (now - me->action_start > 30) && (now - me->action_start < 45)) {
@@ -266,14 +266,18 @@ unsigned char render() {
         sprite_move(me->sprite_no, SCREEN_SPRITE_BORDER_X_START + me->path_x + ((SCREEN_SPRITE_BORDER_HEIGHT / 2 - me->path_y) / 4), (me->path_y / 2) + (SCREEN_SPRITE_BORDER_HEIGHT * 3 / 4));
     }
 
-
     return EXIT_SUCCESS;
 }
 
 unsigned char my_irq_handler(void) {
-    now++;
+    unsigned char err;
+    unsigned char i;
 
     if(*(unsigned char *)VIC_IRR & VIC_IRQ_RASTER) {
+        *(unsigned char*)VIC_IRR |= VIC_IRQ_RASTER;
+
+        now++;
+
         sid_play_frame();
         update();
 
@@ -284,12 +288,9 @@ unsigned char my_irq_handler(void) {
 }
 
 unsigned char play_level (void) {
-    unsigned int elapsed;
     char_state* me;
     unsigned char err, i;
 
-    unsigned int previous = clock();
-    unsigned int lag = 0;
     level_screen* screen = calloc(1, sizeof(level_screen));
 
     state = calloc(1, sizeof(level_state));
@@ -306,8 +307,6 @@ unsigned char play_level (void) {
 
     screen_init(false);
     clrscr();
-
-    setup_irq_handler(&my_irq_handler);
 
     state->guy = char_state_init(CHAR_TYPE_GUY);
 
@@ -328,6 +327,8 @@ unsigned char play_level (void) {
         // FIXME These xy calcs are wrong.
         spritesheet_show(me->sprite_no, me->default_sprite, me->path_x, me->path_y, true, true);
     }
+
+    setup_irq_handler(&my_irq_handler);
 
     while (true)
     {

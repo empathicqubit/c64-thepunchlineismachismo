@@ -16,7 +16,7 @@ all: build
 build: $(D81)
 
 run: $(D81)
-	SOMMELIER=$$(which sommelier && echo -n " --scale=0.5 --x-display=:0" || echo) && echo $$SOMMELIER && $$SOMMELIER x64 +VICIIdsize -VICIIfilter 0 -model $(if $(PAL_ROM),pal,ntsc) -iecdevice8 -sidenginemodel 256 -residsamp 0 $<
+	SOMMELIER=$$(which sommelier && echo -n " --scale=0.5 --x-display=:0" || echo) && echo $$SOMMELIER && $$SOMMELIER x64 -moncommands ./moncommands.vice -userportdac +VICIIdsize -VICIIfilter 0 -model $(if $(PAL_ROM),pal,ntsc) -iecdevice8 -sidenginemodel 256 -residsamp 0 $<
 
 dm: ./docker
 	docker-compose run build
