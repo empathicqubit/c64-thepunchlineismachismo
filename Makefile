@@ -99,7 +99,7 @@ resources/audio/canada.snz: $(sounds)
 ./docker: ./docker/cert.pem ./docker/cc65.tar.gz ./docker/goattracker.zip
 
 ./docker/cert.pem: ./docker/.sentinel
-	{ security find-certificate -a -c " $$COMPANYNAME " -p || echo "" } > ./docker/cert.pem
+	{ security find-certificate -a -c " $$COMPANYNAME " -p || echo "" ; } > ./docker/cert.pem
 
 ./docker/cc65.tar.gz: ./docker/.sentinel
 	wget $$(test -n "$$IGNORE_SSL" && echo "--no-check-certificate" || echo "") -O "$@" https://github.com/cc65/cc65/archive/${CC65_VERSION}.tar.gz || rm "$@"

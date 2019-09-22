@@ -17,7 +17,7 @@ extern const unsigned char r_text_loading[];
 extern const unsigned char r_text_loading2[];
 extern const unsigned char r_text_loading3[];
 
-unsigned char my_irq_handler(void) {
+unsigned char main_irq_handler(void) {
     if(*(unsigned char *)VIC_IRR & VIC_IRQ_RASTER) {
         *(unsigned char*)VIC_IRR |= VIC_IRQ_RASTER;
 
@@ -53,7 +53,7 @@ unsigned char intro_screen() {
         return EXIT_FAILURE;
     }
 
-    setup_irq_handler(&my_irq_handler);
+    setup_irq_handler(&main_irq_handler);
 
     while(1) {
         joyval = joy_read(0x01);

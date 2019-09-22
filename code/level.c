@@ -312,7 +312,7 @@ unsigned char render() {
     return EXIT_SUCCESS;
 }
 
-unsigned char my_irq_handler(void) {
+unsigned char level_irq_handler(void) {
     unsigned char err;
     unsigned char i;
 
@@ -371,7 +371,7 @@ unsigned char play_level (void) {
         spritesheet_show(me->sprite_slot, me->default_sprite, me->path_x, me->path_y, true, true);
     }
 
-    setup_irq_handler(&my_irq_handler);
+    setup_irq_handler(&level_irq_handler);
 
     while (true)
     {
