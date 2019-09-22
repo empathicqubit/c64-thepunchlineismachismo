@@ -6,7 +6,7 @@
 #include <joystick.h>
 #include <conio.h>
 #include <6502.h>
-#include "koala.h"
+#include "ocp.h"
 #include "sid.h"
 #include "c64.h"
 #include "utils.h"
@@ -48,7 +48,7 @@ unsigned char intro_screen() {
 
     puts(r_text_loading3);
 
-    if(err = koala_load("intro.koa")) {
+    if(err = ocp_load("intro.ocp")) {
         printf("Bitmap load error: %x\n", err);
         return EXIT_FAILURE;
     }

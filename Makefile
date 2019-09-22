@@ -21,6 +21,10 @@ run: $(D81)
 dm: ./docker
 	docker-compose run build
 
+multipaint:
+	cd tools/multipaint/application.linux64
+	./multipaint
+
 clean:
 	rm -rf resources/generated/
 	rm -rf machismo.prg
@@ -54,8 +58,10 @@ sound_sizes=$(foreach sound,$(sounds),$(shell stat -c '%s' "$(sound)"))
 
 charset := $(wildcard resources/charset/*.s)
 
-# Generate these with a rule if possible. Poke at polizei JAR?
-bitmaps := $(patsubst %.png,%.koa,$(wildcard resources/bitmap/*.png))
+# Decided to use OCP since Multipaint supports it natively.
+# I wanted to use PNGs since they are well supported, but
+# I prefer having a simple toolset instead.
+bitmaps := $(wildcard resources/bitmap/*.ocp)
 
 code := $(wildcard code/*.c) $(wildcard code/*.s)
 
