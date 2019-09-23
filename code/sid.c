@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <cbm.h>
 #include "c64.h"
 #include "utils.h"
 
@@ -35,8 +36,18 @@ unsigned char sid_play_sound(unsigned char* snz_pointer, unsigned char sound_idx
 
 unsigned char sid_load (char filename[]) {
     FILE* fp;
+    char* buffer;
+    bool pal = get_tv();
 
-    fp = fopen(filename, "rb");
+    if(pal) {
+        buffer = malloc(17);
+        sprintf(buffer, "%sp", filename);
+    }
+    else {
+        buffer = filename;
+    }
+
+    fp = fopen(buffer, "rb");
 
     if(!fread(SID_START, 256, SID_SIZE / 256 + 1, fp)) {
         fclose(fp);
@@ -46,6 +57,8 @@ unsigned char sid_load (char filename[]) {
     fclose(fp);
 
     sid_init();
+
+    if(pal) free(buffer);
 
     return EXIT_SUCCESS;
 }

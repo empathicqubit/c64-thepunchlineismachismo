@@ -312,22 +312,15 @@ unsigned char render() {
     return EXIT_SUCCESS;
 }
 
+void level_raster_irq(void) {
+    now++;
+
+    sid_play_frame();
+    update();
+}
+
 unsigned char level_irq_handler(void) {
-    unsigned char err;
-    unsigned char i;
-
-    if(*(unsigned char *)VIC_IRR & VIC_IRQ_RASTER) {
-        *(unsigned char*)VIC_IRR |= VIC_IRQ_RASTER;
-
-        now++;
-
-        sid_play_frame();
-        update();
-
-        return IRQ_HANDLED;
-    }
-
-    return IRQ_NOT_HANDLED;
+    return consume_raster_irq(&level_raster_irq);
 }
 
 unsigned char play_level (void) {

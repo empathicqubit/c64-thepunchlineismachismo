@@ -17,21 +17,16 @@ extern const unsigned char r_text_loading[];
 extern const unsigned char r_text_loading2[];
 extern const unsigned char r_text_loading3[];
 
+void main_raster_irq(void) {
+    sid_play_frame();
+}
+
 unsigned char main_irq_handler(void) {
-    if(*(unsigned char *)VIC_IRR & VIC_IRQ_RASTER) {
-        *(unsigned char*)VIC_IRR |= VIC_IRQ_RASTER;
-
-        sid_play_frame();
-
-        return IRQ_HANDLED;
-    }
-
-    return IRQ_NOT_HANDLED;
+    return consume_raster_irq(&main_raster_irq);
 }
 
 unsigned char intro_screen() {
     unsigned char err;
-    unsigned int now = clock();
     unsigned char joyval;
 
     screen_init(false);
@@ -71,6 +66,8 @@ unsigned char intro_screen() {
 
 unsigned char main (void) {
     unsigned char err;
+
+    pal_system(); // Reset the system's PAL flag as it could be garbage in various cases.
 
     srand(clock());
 

@@ -1,9 +1,9 @@
 #include <stdbool.h>
 
-/* Check if system is PAL
- * @return true if PAL
+/* Check if system is actually PAL and store in the PALFLAG
+ * More reliable than the system's flag apparently.
  */
-bool pal_system(void);
+void pal_system(void);
 
 /* Wait a number of milliseconds
  * @param duration - Milliseconds to wait
@@ -24,4 +24,6 @@ void character_init(void);
  */
 int get_filesize(char filename[]);
 
-void setup_irq_handler(void* handler);
+unsigned char setup_irq_handler(unsigned char (*handler)(void));
+
+unsigned char consume_raster_irq(void (*raster_handler)(void));

@@ -14,9 +14,8 @@ extern void updatepalntsc(void);
 /* Check if system is PAL
  * @return true if PAL
  */
-bool pal_system(void) {
+void pal_system(void) {
     updatepalntsc();
-    return *(bool *)PALFLAG;
 }
 
 /* Wait a number of milliseconds
@@ -97,10 +96,33 @@ int get_filesize(char filename[]) {
 
 unsigned char* irq_stack;
 
-void setup_irq_handler(unsigned char (*handler)(void)) {
+unsigned int raster_clock = 0;
+
+unsigned char consume_raster_irq(void (*raster_handler)(void)) {
+    if(*(unsigned char *)VIC_IRR & VIC_IRQ_RASTER) {
+        *(unsigned char*)VIC_IRR |= VIC_IRQ_RASTER;
+
+        raster_clock++;
+
+        // If we're NTSC then we skip every 6th frame.
+        if(!get_tv() && !(raster_clock % 6)) {
+            return IRQ_HANDLED;
+        }
+
+        raster_handler();
+
+        return IRQ_HANDLED;
+    }
+
+    return IRQ_NOT_HANDLED;
+}
+
+unsigned char setup_irq_handler(unsigned char (*handler)(void)) {
     if(!irq_stack) {
         irq_stack = malloc(IRQ_STACK_SIZE);
     }
 
     set_irq(handler, irq_stack, IRQ_STACK_SIZE);
+
+    return EXIT_SUCCESS;
 }

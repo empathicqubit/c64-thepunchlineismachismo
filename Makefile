@@ -5,7 +5,9 @@ D81=machismo.d81
 SID_HIGHBYTE=B0
 BITMAP_START=E000
 SCREEN_START=C000
-PAL_ROM ?=
+MODEL?=ntsc
+
+GT2RELOC_OPTS=-P -W$(SID_HIGHBYTE) -B1 -D1 -ZFB -C0 -E0 -H0 -R1
 
 CC65_VERSION=V2.18
 
@@ -16,14 +18,17 @@ all: build
 build: $(D81)
 
 run: $(D81)
-	SOMMELIER=$$(which sommelier && echo -n " --scale=0.5 --x-display=:0" || echo) && echo $$SOMMELIER && $$SOMMELIER x64 -moncommands ./moncommands.vice -userportdac +VICIIdsize -VICIIfilter 0 -model $(if $(PAL_ROM),pal,ntsc) -iecdevice8 -sidenginemodel 256 -residsamp 0 $<
+	SOMMELIER=$$(which sommelier && echo -n " --scale=0.5 --x-display=:0" || echo) && echo $$SOMMELIER && $$SOMMELIER x64 -moncommands ./moncommands.vice -userportdac +VICIIdsize -VICIIfilter 0 -model $(MODEL) -iecdevice8 -sidenginemodel 256 -residsamp 0 $<
 
 dm: ./docker
 	docker-compose run build
 
-multipaint:
+mp:
 	cd tools/multipaint/application.linux64
 	./multipaint
+
+gt:
+	goattracker -P
 
 clean:
 	rm -rf resources/generated/
@@ -38,9 +43,9 @@ clean:
 	rm -rf resources/audio/*.snz
 	rm -rf $(sounds)
 
-cp-emu: /mnt/chromeos/removable/Chromebook/user/roms/machismo.d81
+cp-emu: /mnt/chromeos/removable/Chromebook/user/roms/$(D81)
 
-cp-c64: /mnt/chromeos/removable/C64/machismo.d81
+cp-c64: /mnt/chromeos/removable/C64/$(D81)
 
 /mnt/chromeos/removable/Chromebook/user/roms/machismo.d81: $(D81)
 	cp $< $@
@@ -50,7 +55,11 @@ cp-c64: /mnt/chromeos/removable/C64/machismo.d81
 
 sprites := $(wildcard resources/sprites/*.spd)
 
-music := $(patsubst %.sng,%.sid,$(wildcard resources/audio/*.sng))
+ntsc_music := $(patsubst %.sng,%.sid,$(wildcard resources/audio/*.sng))
+
+pal_music := $(patsubst %.sid,%.sidp,$(ntsc_music))
+
+music := $(ntsc_music) $(pal_music)
 
 sounds := $(sort $(patsubst %.ins,%.snd,$(wildcard resources/audio/*.ins)))
 
@@ -91,9 +100,15 @@ resources/audio/canada.snz: $(sounds)
 %.snd: %.ins
 	ins2snd2 "$<" "$@" -b
 
+%.sidp: %.sng
+	# PAL
+	gt2reloc $< $@.bin $(GT2RELOC_OPTS)
+	mv $@.bin $@
+
 %.sid: %.sng
 	# You need to set the correct extension otherwise the output format will be SIDPlay!!!
-	gt2reloc $< $@.bin -N -W$(SID_HIGHBYTE) -B1 -D1 -ZFB -C0 -E0 -H0 -R1
+	# NTSC
+	gt2reloc $< $@.bin $(GT2RELOC_OPTS) -G424
 	mv $@.bin $@
 
 ./docker: ./docker/cert.pem ./docker/cc65.tar.gz ./docker/goattracker.zip
