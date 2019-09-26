@@ -15,10 +15,10 @@ CC65_VERSION=V2.18
 
 all: build
 
-build: $(D81)
+build: build/$(D81)
 
-run: $(D81)
-	SOMMELIER=$$(which sommelier && echo -n " --scale=0.5 --x-display=:0" || echo) && echo $$SOMMELIER && $$SOMMELIER x64 -moncommands ./moncommands.vice -userportdac +VICIIdsize -VICIIfilter 0 -model $(MODEL) -iecdevice8 -sidenginemodel 256 -residsamp 0 $<
+run: build/$(D81)
+	SOMMELIER=$$(which sommelier && echo -n " --scale=0.5 --x-display=:0" || echo) && echo $$SOMMELIER && $$SOMMELIER x64 -moncommands ./moncommands.vice -userportdac +VICIIdsize -VICIIfilter 0 -model $(MODEL) -iecdevice8 -autostart-warp -sidenginemodel 256 -residsamp 0 $<
 
 dm: ./docker
 	docker-compose run build
@@ -31,15 +31,11 @@ gt:
 	goattracker -P
 
 clean:
-	rm -rf resources/generated/
-	rm -rf machismo.prg
 	rm -rf docker
-	rm -rf $(D81)
-	rm -rf empty.d81
+	rm -rf build
 	find . -iname '*.o' -delete
-	rm -rf *.pem
-	rm -rf machismo.lbl
 	rm -rf $(music)
+	rm -rf $(bitmaps)
 	rm -rf resources/audio/*.snz
 	rm -rf $(sounds)
 
@@ -47,10 +43,10 @@ cp-emu: /mnt/chromeos/removable/Chromebook/user/roms/$(D81)
 
 cp-c64: /mnt/chromeos/removable/C64/$(D81)
 
-/mnt/chromeos/removable/Chromebook/user/roms/machismo.d81: $(D81)
+/mnt/chromeos/removable/Chromebook/user/roms/machismo.d81: build/$(D81)
 	cp $< $@
 
-/mnt/chromeos/removable/C64/machismo.d81: $(D81)
+/mnt/chromeos/removable/C64/machismo.d81: build/$(D81)
 	cp $< $@
 
 sprites := $(wildcard resources/sprites/*.spd)
@@ -70,22 +66,22 @@ charset := $(wildcard resources/charset/*.s)
 # Decided to use OCP since Multipaint supports it natively.
 # I wanted to use PNGs since they are well supported, but
 # I prefer having a simple toolset instead.
-bitmaps := $(wildcard resources/bitmap/*.ocp)
+bitmaps := $(patsubst %.ocp,%.ocr,$(wildcard resources/bitmap/*.ocp))
 
 code := $(wildcard code/*.c) $(wildcard code/*.s)
 
-machismo.d81: empty.d81 machismo.prg $(music) $(bitmaps) $(sprites) resources/audio/canada.snz
+build/machismo.d81: build/empty.d81 build/machismo.prg $(music) $(bitmaps) $(sprites) resources/audio/canada.snz build/.sentinel 
 	# Writes all files that have changed.
 	c1541 -attach $@ $(foreach content,$(filter-out $<,$?), -delete $(notdir $(content)) -write $(content) $(notdir $(content)))
 
-empty.d81:
+build/empty.d81: build/.sentinel
 	c1541 -format "canada,01" d81 $@
-	test ! -f "$(D81)" && cp empty.d81 $(D81) || exit 0
+	test ! -f "build/$(D81)" && cp $@ build/$(D81) || exit 0
 
-machismo.prg: linker.cfg $(code) resources/text.s $(charset) $(music)
+build/machismo.prg: build/.sentinel linker.cfg $(code) resources/text.s $(charset) $(music)
 	sidsize=$$(stat -c'%s' $(music) | sort -nr | head -1) 
 	echo "SID SIZE $$sidsize"
-	cl65 -Osr -g -t c64 -C linker.cfg -Wa "-DSID_START=\$$$(SID_HIGHBYTE)00" -Wc "-DBITMAP_START=0x$(BITMAP_START)" -Wc "-DSCREEN_START=0x$(SCREEN_START)" "-DSID_START=0x$(SID_HIGHBYTE)00" -Wc "-DSID_SIZE=$$sidsize" -Wl "-Lnmachismo.lbl" -o $@ -O $(filter %.c %.s,$^)
+	cl65 -Osr -g -t c64 -C linker.cfg -Wa "-DSID_START=\$$$(SID_HIGHBYTE)00" -Wc "-DBITMAP_START=0x$(BITMAP_START)" -Wc "-DSCREEN_START=0x$(SCREEN_START)" "-DSID_START=0x$(SID_HIGHBYTE)00" -Wc "-DSID_SIZE=$$sidsize" -Wl "-Lnbuild/machismo.lbl" -o $@ -O $(filter %.c %.s,$^)
 
 resources/audio/canada.snz: $(sounds)
 	sound_header="\x$$(printf '%x' $(words $(sounds)))"
@@ -104,6 +100,12 @@ resources/audio/canada.snz: $(sounds)
 	# PAL
 	gt2reloc $< $@.bin $(GT2RELOC_OPTS)
 	mv $@.bin $@
+
+%.ocr: %.ocp build/rle
+	build/rle $< $@
+
+build/rle: tools/rle.c build/.sentinel
+	gcc -o $@ $<
 
 %.sid: %.sng
 	# You need to set the correct extension otherwise the output format will be SIDPlay!!!

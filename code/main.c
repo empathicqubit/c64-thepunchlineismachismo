@@ -43,7 +43,7 @@ unsigned char intro_screen() {
 
     puts(r_text_loading3);
 
-    if(err = ocp_load("intro.ocp")) {
+    if(err = ocp_load("intro.ocr")) {
         printf("Bitmap load error: %x\n", err);
         return EXIT_FAILURE;
     }

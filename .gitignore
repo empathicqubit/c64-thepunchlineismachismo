@@ -6,6 +6,7 @@ node_modules/
 /*.d81
 /*.prg
 *.sid
+*.ocr
 *.sidp
 *.lbl
 *.pem
