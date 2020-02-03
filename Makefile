@@ -18,7 +18,7 @@ all: build
 build: build/$(D81)
 
 run: build/$(D81)
-	SOMMELIER=$$(which sommelier && echo -n " --scale=0.5 --x-display=:0" || echo) && echo $$SOMMELIER && $$SOMMELIER x64 -moncommands ./moncommands.vice -userportdac +VICIIdsize -VICIIfilter 0 -model $(MODEL) -iecdevice8 -autostart-warp -sidenginemodel 256 -residsamp 0 $<
+	SOMMELIER=$$(which sommelier && echo -n " --scale=0.5 --x-display=:0" || echo) && echo $$SOMMELIER && $$SOMMELIER $$(which x64 x64sc | head -1) -moncommands ./moncommands.vice +VICIIdsize -VICIIfilter 0 -model $(MODEL) -iecdevice8 -autostart-warp -sidenginemodel 256 -sound -autostart-handle-tde -residsamp 0 $<
 
 dm: ./docker
 	docker-compose run build
@@ -33,7 +33,7 @@ gt:
 clean:
 	rm -rf docker
 	rm -rf build
-	find . -iname '*.o' -delete
+	find . -iname '*.o' -exec rm -rf {} \;
 	rm -rf $(music)
 	rm -rf $(bitmaps)
 	rm -rf resources/audio/*.snz
@@ -113,16 +113,19 @@ build/rle: tools/rle.c build/.sentinel
 	gt2reloc $< $@.bin $(GT2RELOC_OPTS) -G424
 	mv $@.bin $@
 
-./docker: ./docker/cert.pem ./docker/cc65.tar.gz ./docker/goattracker.zip
+./docker: ./docker/Dockerfile ./docker/cert.pem ./docker/cc65.tar.gz ./docker/goattracker.zip
+
+./docker/Dockerfile: ./docker/.sentinel
+	cp ./Dockerfile "$@"
 
 ./docker/cert.pem: ./docker/.sentinel
 	{ security find-certificate -a -c " $$COMPANYNAME " -p || echo "" ; } > ./docker/cert.pem
 
 ./docker/cc65.tar.gz: ./docker/.sentinel
-	wget $$(test -n "$$IGNORE_SSL" && echo "--no-check-certificate" || echo "") -O "$@" https://github.com/cc65/cc65/archive/${CC65_VERSION}.tar.gz || rm "$@"
+	curl -L 'https://github.com/cc65/cc65/archive/$(CC65_VERSION).tar.gz' > '$@' || rm "$@"
 
 ./docker/goattracker.zip: ./docker/.sentinel
-	wget $$(test -n "$$IGNORE_SSL" && echo "--no-check-certificate" || echo "") -O "$@" http://csdb.dk/getinternalfile.php/180091/GoatTracker_2.75.zip || rm "$@"
+	curl -L 'http://csdb.dk/getinternalfile.php/180091/GoatTracker_2.75.zip' > "$@" || rm "$@"
 
 # A single pattern rule will create all appropriate folders as required
 .PRECIOUS: %/.sentinel # otherwise make (annoyingly) deletes it

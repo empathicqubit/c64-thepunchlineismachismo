@@ -2,8 +2,8 @@ version: '2'
 services:
     build:
         build: 
-            context: docker
-            dockerfile: ../Dockerfile
+            context: ./docker
+            dockerfile: Dockerfile
             args:
                 - http_proxy
                 - HTTP_PROXY

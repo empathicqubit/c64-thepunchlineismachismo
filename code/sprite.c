@@ -38,8 +38,8 @@ unsigned char sprite_move(unsigned char sprite_slot, unsigned int x, unsigned ch
  * @param begin - first sprite in the animation
  * @param end - last sprite in the animation
  */
-unsigned char spritesheet_animation_next(unsigned int action_time, unsigned char frame_duration, unsigned char sheet_idx_begin, unsigned char sheet_idx_end) {
-    return sheet_idx_begin + ((action_time % (((sheet_idx_end - sheet_idx_begin) + 1) * frame_duration)) / frame_duration);
+unsigned char spritesheet_animation_next(unsigned int action_time, unsigned char frame_duration, unsigned char sheet_idx_begin, unsigned char animation_length) {
+    return sheet_idx_begin + ((action_time % (animation_length * frame_duration)) / frame_duration);
 }
 
 typedef struct {

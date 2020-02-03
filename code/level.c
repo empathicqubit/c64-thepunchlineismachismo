@@ -5,17 +5,12 @@
 #include <conio.h>
 #include <time.h>
 #include <stdbool.h>
+#include "level.h"
 #include "utils.h"
 #include "c64.h"
 #include "sprite.h"
 #include "sid.h"
 #include "../resources/sprites/canada.h"
-
-enum {
-    CHAR_TYPE_GUY,
-    CHAR_TYPE_MOOSE,
-};
-typedef unsigned char char_type;
 
 enum {
 
@@ -85,15 +80,16 @@ unsigned int now;
 
 char_state* char_state_init(char_type c) {
     char_state* state = calloc(1, sizeof(char_state));
+    state->char_type = c;
     if(c == CHAR_TYPE_GUY) {
         state->sprite_slot = 0;
         state->path_x = 25;
         state->path_y = 25;
         state->movement_speed = 2;
-        state->default_sprite = SPRITES_GUY_FRONT;
+        state->default_sprite = SPRITES[c]->neutral->start_index;
     }
     else if(c == CHAR_TYPE_MOOSE) {
-        state->default_sprite = SPRITES_MOOSE;
+        state->default_sprite = SPRITES[c]->neutral->start_index;
         state->movement_speed = 2;
         state->hitpoints = 5;
         state->sprite_slot = 1;
@@ -245,7 +241,10 @@ unsigned char update(void) {
 }
 
 unsigned char render() {
-    unsigned char i, sheet_idx, action_flags, kbchar;
+    unsigned char i, sheet_idx, char_type, action_flags, kbchar;
+    bool animate = true;
+    sprite_sequence* selected_sprite;
+    char_sprite_group* selected_char;
     char_state* me;
     unsigned int action_time;
 
@@ -271,11 +270,11 @@ unsigned char render() {
 
         if(!me) continue;
 
-        if(me != state->guy) {
-            printf("X: %x Y: %x HP: %x\n", me->path_x, me->path_y, me->hitpoints);
-        }
+        selected_char = SPRITES[me->char_type];
 
-        sheet_idx = me->default_sprite;
+        if(me != state->guy) {
+            printf("X: %x Y: %x HP: %x A: %x S: %x C: %x\n", me->path_x, me->path_y, me->hitpoints, me->action_flags, me->sprite_slot, me->char_type);
+        }
 
         action_flags = me->action_flags;
 
@@ -283,25 +282,37 @@ unsigned char render() {
 
         if(action_flags & CHAR_FLAG_DIRECTION_RIGHT) {
             if(action_flags & CHAR_FLAG_ATTACKING) {
-                sheet_idx = spritesheet_animation_next(action_time, 10, SPRITES_GUY_ATTACK_RIGHT_0, SPRITES_GUY_ATTACK_RIGHT_END);
+                selected_sprite = selected_char->attack_right;
             }
             else if(action_flags & CHAR_FLAG_MOVING) {
-                sheet_idx = spritesheet_animation_next(action_time, 5, SPRITES_GUY_WALK_RIGHT_0, SPRITES_GUY_WALK_RIGHT_END);
+                selected_sprite = selected_char->walk_right;
             }
             else {
-                sheet_idx = SPRITES_GUY_WALK_RIGHT_0;
+                selected_sprite = selected_char->walk_right;
+                animate = false;
             }
         }
         else if(action_flags & CHAR_FLAG_DIRECTION_LEFT) {
             if(action_flags & CHAR_FLAG_ATTACKING) {
-                sheet_idx = spritesheet_animation_next(action_time, 10, SPRITES_GUY_ATTACK_LEFT_0, SPRITES_GUY_ATTACK_LEFT_END);
+                selected_sprite = selected_char->attack_left;
             }
             else if(action_flags & CHAR_FLAG_MOVING) {
-                sheet_idx = spritesheet_animation_next(action_time, 5, SPRITES_GUY_WALK_LEFT_0, SPRITES_GUY_WALK_LEFT_END);
+                selected_sprite = selected_char->walk_left;
             }
             else {
-                sheet_idx = SPRITES_GUY_WALK_LEFT_0;
+                selected_sprite = selected_char->walk_left;
+                animate = false;
             }
+        }
+        else {
+            selected_sprite = selected_char->neutral;
+        }
+
+        if(!animate) {
+            sheet_idx = selected_sprite->start_index;
+        }
+        else {
+            sheet_idx = spritesheet_animation_next(action_time, selected_sprite->frame_duration, selected_sprite->start_index, selected_sprite->length);
         }
 
         spritesheet_set_image(me->sprite_slot, sheet_idx);

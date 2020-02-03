@@ -1,6 +1,7 @@
 build/
 resources/generated/
 node_modules/
+.vscode/
 *.o
 *.sprite.*
 /*.d81

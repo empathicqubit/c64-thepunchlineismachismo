@@ -1,19 +1,45 @@
-const unsigned char SPRITES_GUY_FRONT = 0x00;
+typedef struct sprite_sequence sprite_sequence;
+struct sprite_sequence {
+    unsigned char start_index;
+    unsigned char length;
+    unsigned char frame_duration; // In jiffies
+};
 
-const unsigned char SPRITES_GUY_WALK_RIGHT_0 = 0x01;
-const unsigned char SPRITES_GUY_WALK_RIGHT_1 = 0x02;
-const unsigned char SPRITES_GUY_WALK_RIGHT_END = 0x03;
+typedef struct char_sprite_group char_sprite_group;
+struct char_sprite_group {
+    sprite_sequence* neutral;
+    sprite_sequence* walk_right;
+    sprite_sequence* walk_left;
+    sprite_sequence* attack_right;
+    sprite_sequence* attack_left;
+};
 
-const unsigned char SPRITES_GUY_WALK_LEFT_0 = 0x04;
-const unsigned char SPRITES_GUY_WALK_LEFT_1 = 0x05;
-const unsigned char SPRITES_GUY_WALK_LEFT_END = 0x06;
+sprite_sequence _sprites_guy[] = {
+    {0x00, 1, 1}, // neutral
+    {0x01, 3, 5}, // walk_right
+    {0x04, 3, 5}, // walk_left
+    {0x0A, 3, 10}, // attack_right FIXME sprites swapped in file
+    {0x07, 3, 10}, // attack_left
+};
 
-const unsigned char SPRITES_GUY_ATTACK_LEFT_0 = 0x07;
-const unsigned char SPRITES_GUY_ATTACK_LEFT_1 = 0x08;
-const unsigned char SPRITES_GUY_ATTACK_LEFT_END = 0x09;
+char_sprite_group _sprites_group_guy = {
+    &(_sprites_guy[0]),
+    &(_sprites_guy[1]),
+    &(_sprites_guy[2]),
+    &(_sprites_guy[3]),
+    &(_sprites_guy[4]),
+};
 
-const unsigned char SPRITES_GUY_ATTACK_RIGHT_0 = 0x0A;
-const unsigned char SPRITES_GUY_ATTACK_RIGHT_1 = 0x0B;
-const unsigned char SPRITES_GUY_ATTACK_RIGHT_END = 0x0C;
+sprite_sequence _sprites_moose[] = {
+    {0x0d, 1, 1} // neutral
+};
 
-const unsigned char SPRITES_MOOSE = 0x0D;
+char_sprite_group _sprites_group_moose = {
+    &(_sprites_moose[0]),
+};
+
+// Index is CHAR_TYPE enum. See level.h
+char_sprite_group *SPRITES[] = {
+    &_sprites_group_guy,
+    &_sprites_group_moose,
+};

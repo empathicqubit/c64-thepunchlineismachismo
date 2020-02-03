@@ -12,7 +12,7 @@ unsigned char sprite_move(unsigned char sprite_slot, unsigned int x, unsigned ch
  * @param sheet_idx_begin - first sprite in the animation
  * @param sheet_idx_end - last sprite in the animation
  */
-unsigned char spritesheet_animation_next(unsigned int action_time, unsigned char frame_duration, unsigned char sheet_idx_begin, unsigned char sheet_idx_end);
+unsigned char spritesheet_animation_next(unsigned int action_time, unsigned char frame_duration, unsigned char sheet_idx_begin, unsigned char animation_length);
 
 /* Load a sprite sheet in SpritePad format
  * @param filename - The filename on disk
