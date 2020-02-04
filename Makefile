@@ -68,7 +68,7 @@ charset := $(wildcard resources/charset/*.s)
 # I prefer having a simple toolset instead.
 bitmaps := $(patsubst %.ocp,%.ocr,$(wildcard resources/bitmap/*.ocp))
 
-code := $(wildcard code/*.c) $(wildcard code/*.s)
+code := $(wildcard code/*.c) $(wildcard code/*.s) resources/sprites/canada.c
 
 build/machismo.d81: build/empty.d81 build/machismo.prg $(music) $(bitmaps) $(sprites) resources/audio/canada.snz build/.sentinel 
 	# Writes all files that have changed.
