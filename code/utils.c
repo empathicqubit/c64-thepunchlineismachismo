@@ -69,6 +69,15 @@ void screen_init (bool use_graphics_charset) {
     bgcolor(COLOR_BLACK);
 }
 
+char _itoabuf[10];
+
+/** Write a value to stdout
+ * @param value - The value to write
+ */
+void cputs_hex_value(int value) {
+    cputs(itoa(value, _itoabuf, 16));
+}
+
 /** Get the file size in a stupid way.
  * @param filename - The filename to check.
  */

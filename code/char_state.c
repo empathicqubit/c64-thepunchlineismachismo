@@ -14,7 +14,7 @@ char_state* char_state_init(char_type c, unsigned char sprite_slot) {
     }
     else if(c == CHAR_TYPE_MOOSE) {
         state->default_sprite = SPRITES[c]->neutral->start_index;
-        state->movement_speed = 2;
+        state->movement_speed = 1;
         state->hitpoints = 5;
         state->path_x = 160;
         state->path_y = 25;

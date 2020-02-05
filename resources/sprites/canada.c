@@ -27,11 +27,29 @@ char_sprite_group _sprites_group_guy = {
 };
 
 sprite_sequence _sprites_moose[] = {
-    {0x0b, 1, 1} // neutral // FIXME
+    {0x0d, 1, 1}, // neutral
+
+    {0x0e, 1, 1}, // walk_right
+    {0x0f, 1, 1}, // walk_left
+
+    {0x10, 1, 1}, // attack_right
+    {0x11, 1, 1}, // attack_left
+
+    {0x12, 1, 30}, // oof_right
+    {0x13, 1, 30}, // oof_left
 };
 
 char_sprite_group _sprites_group_moose = {
     &(_sprites_moose[0]),
+
+    &(_sprites_moose[1]),
+    &(_sprites_moose[2]),
+
+    &(_sprites_moose[3]),
+    &(_sprites_moose[4]),
+
+    &(_sprites_moose[5]),
+    &(_sprites_moose[6]),
 };
 
 

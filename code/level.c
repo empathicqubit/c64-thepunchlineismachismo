@@ -35,31 +35,30 @@ unsigned int now;
 unsigned char process_input(void) {
     unsigned char joyval = joy_read(0x01);
     char_state* guy = state->guy;
-    guy->action_flags &= ~CHAR_ACTION_MOVING;
+    guy->action_flags &= ~CHAR_ACTION_MOVING_MASK;
 
-    if(joyval & CHAR_ACTION_DIRECTION_MASK) {
-        guy->action_flags &= ~CHAR_ACTION_DIRECTION_MASK;
+    if(joyval & JOY_ANY_MASK) {
         if(joyval & JOY_BTN_1_MASK) {
             guy->action_flags |= CHAR_ACTION_ATTACKING;
         }
 
         if(joyval & JOY_UP_MASK) {
-            guy->action_flags |= CHAR_ACTION_MOVING | CHAR_ACTION_DIRECTION_UP;
+            guy->action_flags &= ~CHAR_ACTION_DIRECTION_UPDOWN;
+            guy->action_flags |= CHAR_ACTION_MOVING_UPDOWN;
         }
         else if(joyval & JOY_DOWN_MASK) {
-            guy->action_flags |= CHAR_ACTION_MOVING | CHAR_ACTION_DIRECTION_DOWN;
+            guy->action_flags |= CHAR_ACTION_DIRECTION_UPDOWN;
+            guy->action_flags |= CHAR_ACTION_MOVING_UPDOWN;
         }
 
-        if(joyval & JOY_LEFT_MASK) {
-            guy->action_flags |= CHAR_ACTION_MOVING | CHAR_ACTION_DIRECTION_LEFT;
+        if(joyval & JOY_RIGHT_MASK) {
+            guy->action_flags &= ~CHAR_ACTION_DIRECTION_RIGHTLEFT;
+            guy->action_flags |= CHAR_ACTION_MOVING_RIGHTLEFT;
         }
-        else if(joyval & JOY_RIGHT_MASK) {
-            guy->action_flags |= CHAR_ACTION_MOVING | CHAR_ACTION_DIRECTION_RIGHT;
+        else if(joyval & JOY_LEFT_MASK) {
+            guy->action_flags |= CHAR_ACTION_DIRECTION_RIGHTLEFT;
+            guy->action_flags |= CHAR_ACTION_MOVING_RIGHTLEFT;
         }
-    }
-
-    if(joyval & JOY_BTN_1_MASK) {
-        guy->action_flags |= CHAR_ACTION_ATTACKING;
     }
 
     return EXIT_SUCCESS;
@@ -74,10 +73,21 @@ unsigned char process_cpu_input(void) {
         me = screen->characters[i];
 
         if(me->char_type == CHAR_TYPE_MOOSE) {
-            me->action_flags |= CHAR_ACTION_MOVING;
             if(rand() % 16 == 0) {
-                me->action_flags &= ~CHAR_ACTION_DIRECTION_MASK;
-                me->action_flags |= rand() % CHAR_ACTION_DIRECTION_MASK;
+                me->action_flags |= CHAR_ACTION_MOVING_MASK;
+                if(rand() % 2 == 0) {
+                    me->action_flags &= ~CHAR_ACTION_MOVING_UPDOWN;
+                }
+                else {
+                    me->action_flags &= ~CHAR_ACTION_MOVING_RIGHTLEFT;
+                }
+
+                if(rand() % 2 == 0) {
+                    me->action_flags |= CHAR_ACTION_DIRECTION_MASK;
+                }
+                else {
+                    me->action_flags &= ~CHAR_ACTION_DIRECTION_MASK;
+                }
             }
         }
         else {
@@ -93,6 +103,7 @@ unsigned char update(void) {
     unsigned char j;
     unsigned int action_time, status_time;
     char_state* other;
+    char_action_flag action_flags;
     char_state* me;
     level_screen* screen = state->screens[state->screen_index];
 
@@ -101,16 +112,18 @@ unsigned char update(void) {
 
         if(!me) continue;
 
+        action_flags = me->action_flags;
+
         // Reconcile flags and last_flags
-        if(me->action_flags != me->last_action_flags) {
+        if(action_flags != me->last_action_flags) {
             me->action_start = now;
 
-            if(me->action_flags & CHAR_ACTION_ATTACKING && !(me->last_action_flags & CHAR_ACTION_ATTACKING)) {
+            if(action_flags & CHAR_ACTION_ATTACKING && !(me->last_action_flags & CHAR_ACTION_ATTACKING)) {
                 sid_play_sound(state->snz, 0, 2);
             }
         }
 
-        me->last_action_flags = me->action_flags;
+        me->last_action_flags = action_flags;
 
         if(me->status_flags != me->last_status_flags) {
             me->status_start = now;
@@ -125,13 +138,18 @@ unsigned char update(void) {
             me->status_flags &= ~CHAR_STATUS_INVINCIBLE;
         }
 
-        if((me->action_flags & CHAR_ACTION_DYING) && action_time > 60) {
+        if((action_flags & CHAR_ACTION_DYING) && action_time > 60) {
             sprite_hide(me->sprite_slot);
             screen->characters[i] = NULL;
             free(me);
         }
 
-        if(me->action_flags & CHAR_ACTION_ATTACKING) {
+        // Dying precludes attacking and moving
+        if(action_flags & CHAR_ACTION_DYING) {
+            continue;
+        }
+
+        if(action_flags & CHAR_ACTION_ATTACKING) {
             if(action_time > 10 && action_time < 20) {
                 for(j = 0; j < MAX_SCREEN_CHARACTERS; j++) {
                     other = screen->characters[j];
@@ -140,10 +158,23 @@ unsigned char update(void) {
                     }
 
                     if(
-                            !(other->action_flags & CHAR_ACTION_DYING) && !(other->status_flags & CHAR_STATUS_INVINCIBLE)
-                            && other->path_x - 20 < me->path_x && me->path_x < other->path_x + 20
-                            && other->path_y - 20 < me->path_y && me->path_y < other->path_y + 20
-                            ) {
+                        !(other->action_flags & CHAR_ACTION_DYING) && !(other->status_flags & CHAR_STATUS_INVINCIBLE)
+                        && (
+                            (action_flags & CHAR_ACTION_DIRECTION_RIGHTLEFT)
+                            // Attacker facing left
+                            && (
+                                (me->path_x < other->path_x + 50)
+                                && (me->path_x > other->path_x - 10) 
+                            )
+                            // Attacker facing right
+                            || (
+                                (me->path_x + 50 > other->path_x) 
+                                && (me->path_x + 50 < other->path_x + 60)
+                            )
+                        )
+                        && (me->path_y > other->path_y - 25)
+                        && (me->path_y < other->path_y + 25)
+                    ) {
                         other->hitpoints--;
                         other->status_flags |= CHAR_STATUS_INVINCIBLE;
 
@@ -159,41 +190,48 @@ unsigned char update(void) {
             }
         }
 
-        if(me->action_flags & CHAR_ACTION_MOVING) {
-            if(me->action_flags & CHAR_ACTION_DIRECTION_RIGHT) {
-                me->path_x += me->movement_speed;
-            }
-            else if(me->action_flags & CHAR_ACTION_DIRECTION_LEFT) {
-                if(me->path_x >= me->movement_speed) {
-                    me->path_x -= me->movement_speed;
+        if(action_flags & CHAR_ACTION_MOVING_MASK) {
+            if(action_flags & CHAR_ACTION_MOVING_RIGHTLEFT) {
+                if(action_flags & CHAR_ACTION_DIRECTION_RIGHTLEFT) {
+                    if(me->path_x >= me->movement_speed) {
+                        me->path_x -= me->movement_speed;
+                    }
+                    else {
+                        me->path_x = 0;
+                    }
                 }
                 else {
-                    me->path_x = 0;
+                    me->path_x += me->movement_speed;
                 }
             }
-            else if(me->action_flags & CHAR_ACTION_DIRECTION_UP) {
-                if(me->path_y >= me->movement_speed) {
-                    me->path_y -= me->movement_speed;
+            else {
+                if(action_flags & CHAR_ACTION_DIRECTION_UPDOWN) {
+                    me->path_y += me->movement_speed;
                 }
                 else {
-                    me->path_y = 0;
+                    if(me->path_y >= me->movement_speed) {
+                        me->path_y -= me->movement_speed;
+                    }
+                    else {
+                        me->path_y = 0;
+                    }
                 }
-            }
-            else if(me->action_flags & CHAR_ACTION_DIRECTION_DOWN) {
-                me->path_y += me->movement_speed;
             }
 
             if(me->path_y > SCREEN_SPRITE_BORDER_HEIGHT / 2) {
                 me->path_y = SCREEN_SPRITE_BORDER_HEIGHT / 2;
             }
 
-            if(me->path_x > SCREEN_SPRITE_BORDER_WIDTH) {
-                me->path_x = SCREEN_SPRITE_BORDER_WIDTH;
+            if(me->path_x > SCREEN_SPRITE_BORDER_WIDTH - 40) {
+                me->path_x = SCREEN_SPRITE_BORDER_WIDTH - 40;
             }
         }
     }
 
     return EXIT_SUCCESS;
+}
+
+void cycle_marker(void) {
 }
 
 unsigned char render() {
@@ -202,24 +240,12 @@ unsigned char render() {
     sprite_sequence* selected_sprite;
     char_sprite_group* selected_char;
     char_state* me;
-    unsigned int action_time;
+    unsigned int animation_time;
 
+    sprite_sequence* after_finish = NULL;
     level_screen* screen = state->screens[state->screen_index];
 
-    // BEGIN DEBUG STUFF
     gotoxy(0,0);
-
-    kbchar = 0x00;
-    if(kbhit()) {
-        kbchar = cgetc();
-    }
-
-    if(kbchar) {
-        if(kbchar == 'p') {
-            sid_play_sound(state->snz, rand() % 2, 2);
-        }
-    }
-    // END DEBUG STUFF
 
     for(i = 0; i < MAX_SCREEN_CHARACTERS; i++) {
         me = screen->characters[i];
@@ -229,30 +255,37 @@ unsigned char render() {
         selected_char = SPRITES[me->char_type];
 
         if(now % 5 == 0) {
-            printf("X: %x Y: %x HP: %x A: %x S: %x C: %x\n", me->path_x, me->path_y, me->hitpoints, me->action_flags, me->sprite_slot, me->char_type);
+            cycle_marker();
+            cputs("x: ");
+            cputs_hex_value(me->path_x);
+            cputs(" y: ");
+            cputs_hex_value(me->path_y);
+            cputs(" hp: ");
+            cputs_hex_value(me->hitpoints);
+            cputs(" a: ");
+            cputs_hex_value(me->action_flags);
+            cputs(" s: ");
+            cputs_hex_value(me->sprite_slot);
+            cputs(" c: ");
+            cputs_hex_value(me->char_type);
+            puts("");
+            cycle_marker();
         }
 
         action_flags = me->action_flags;
 
-        action_time = now - me->action_start;
+        animation_time = now - me->action_start;
 
-        if(action_flags & CHAR_ACTION_DIRECTION_RIGHT) {
-            if(action_flags & CHAR_ACTION_ATTACKING) {
-                selected_sprite = selected_char->attack_right;
+        if(action_flags & CHAR_ACTION_DIRECTION_RIGHTLEFT) {
+            if(me->status_flags & CHAR_STATUS_INVINCIBLE) {
+                selected_sprite = selected_char->oof_left;
+                animation_time = now - me->status_start;
+                after_finish = selected_char->walk_left;
             }
-            else if(action_flags & CHAR_ACTION_MOVING) {
-                selected_sprite = selected_char->walk_right;
-            }
-            else {
-                selected_sprite = selected_char->walk_right;
-                animate = false;
-            }
-        }
-        else if(action_flags & CHAR_ACTION_DIRECTION_LEFT) {
-            if(action_flags & CHAR_ACTION_ATTACKING) {
+            else if(action_flags & CHAR_ACTION_ATTACKING) {
                 selected_sprite = selected_char->attack_left;
             }
-            else if(action_flags & CHAR_ACTION_MOVING) {
+            else if(action_flags & CHAR_ACTION_MOVING_MASK) {
                 selected_sprite = selected_char->walk_left;
             }
             else {
@@ -261,20 +294,39 @@ unsigned char render() {
             }
         }
         else {
-            selected_sprite = selected_char->neutral;
+            if(me->status_flags & CHAR_STATUS_INVINCIBLE) {
+                selected_sprite = selected_char->oof_right;
+                animation_time = now - me->status_start;
+                after_finish = selected_char->walk_right;
+            }
+            else if(action_flags & CHAR_ACTION_ATTACKING) {
+                selected_sprite = selected_char->attack_right;
+            }
+            else if(action_flags & CHAR_ACTION_MOVING_MASK) {
+                selected_sprite = selected_char->walk_right;
+            }
+            else {
+                selected_sprite = selected_char->walk_right;
+                animate = false;
+            }
         }
 
         // In case we don't have a sprite defined for this
-        // action, default to the neutral position.
+        // action, default to an obviously wrong sprite.
         if(!selected_sprite) {
-            selected_sprite = selected_char->neutral;
+            selected_sprite = SPRITES[CHAR_TYPE_GUY]->neutral;
         }
 
         if(!animate) {
             sheet_idx = selected_sprite->start_index;
         }
         else {
-            sheet_idx = spritesheet_animation_next(action_time, selected_sprite->frame_duration, selected_sprite->start_index, selected_sprite->length);
+            if(after_finish) {
+                sheet_idx = spritesheet_animation_next(animation_time, selected_sprite->frame_duration, selected_sprite->start_index, selected_sprite->length, false, after_finish->start_index);
+            }
+            else {
+                sheet_idx = spritesheet_animation_next(animation_time, selected_sprite->frame_duration, selected_sprite->start_index, selected_sprite->length, true, NULL);
+            }
         }
 
         spritesheet_set_image(me->sprite_slot, sheet_idx);

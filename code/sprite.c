@@ -32,13 +32,11 @@ unsigned char sprite_move(unsigned char sprite_slot, unsigned int x, unsigned ch
     return EXIT_SUCCESS;
 }
 
-/* Get the next sprite in the sequence, based on the time since the action started
- * @param action_time - jiffies since the action started
- * @param frame_duration - jiffies per frame
- * @param begin - first sprite in the animation
- * @param end - last sprite in the animation
- */
-unsigned char spritesheet_animation_next(unsigned int action_time, unsigned char frame_duration, unsigned char sheet_idx_begin, unsigned char animation_length) {
+unsigned char spritesheet_animation_next(unsigned int action_time, unsigned char frame_duration, unsigned char sheet_idx_begin, unsigned char animation_length, bool animation_loop, unsigned char sheet_idx_after_finish) {
+    if(!animation_loop && action_time > animation_length * frame_duration) {
+        return sheet_idx_after_finish;
+    }
+
     return sheet_idx_begin + ((action_time % (animation_length * frame_duration)) / frame_duration);
 }
 

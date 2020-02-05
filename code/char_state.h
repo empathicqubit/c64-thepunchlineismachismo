@@ -7,21 +7,23 @@ enum {
 typedef unsigned char char_type;
 
 enum {
+    // 0 is up, 1 is down
+    CHAR_ACTION_DIRECTION_UPDOWN = 0x01,
+    // 0 is right, 1 is left
+    CHAR_ACTION_DIRECTION_RIGHTLEFT = 0x02, 
+    CHAR_ACTION_DIRECTION_MASK = 0x03,
 
-    CHAR_ACTION_DIRECTION_UP = JOY_UP_MASK,       // 0x01
-    CHAR_ACTION_DIRECTION_DOWN = JOY_DOWN_MASK,   // 0x02
-    CHAR_ACTION_DIRECTION_LEFT = JOY_LEFT_MASK,   // 0x04
-    CHAR_ACTION_DIRECTION_RIGHT = JOY_RIGHT_MASK, // 0x08
-
-    CHAR_ACTION_DIRECTION_MASK = 0x0F,
+    // Are we moving along the x axis?
+    CHAR_ACTION_MOVING_RIGHTLEFT = 0x04,
+    // Are we moving along the y axis?
+    CHAR_ACTION_MOVING_UPDOWN = 0x08, 
+    CHAR_ACTION_MOVING_MASK = 0x0C,
 
     CHAR_ACTION_ATTACKING = JOY_BTN_1_MASK,    // 0x10
 
-    CHAR_ACTION_MOVING = 0x20,
-
     CHAR_ACTION_DYING = 0x40,
 
-    CHAR_ACTION_MASK = CHAR_ACTION_MOVING | CHAR_ACTION_ATTACKING | CHAR_ACTION_DYING, // directions and attack
+    CHAR_ACTION_MASK = CHAR_ACTION_MOVING_MASK | CHAR_ACTION_ATTACKING | CHAR_ACTION_DYING, // directions and attack
 };
 typedef unsigned char char_action_flag;
 

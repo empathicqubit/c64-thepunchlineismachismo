@@ -13,6 +13,8 @@
 #include "sprite.h"
 #include "level.h"
 
+#define DEBUG 1
+
 extern const unsigned char r_text_loading[];
 extern const unsigned char r_text_loading2[];
 extern const unsigned char r_text_loading3[];
@@ -84,10 +86,12 @@ unsigned char main (void) {
         while(1);
     }
 
+#if !DEBUG
     if(err = intro_screen()) {
         screen_init(false);
         while(1);
     }
+#endif
 
     if(err = play_level()) {
         printf("Level error: %x\n", err);
