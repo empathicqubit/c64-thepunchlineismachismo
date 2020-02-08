@@ -36,7 +36,7 @@ unsigned char ocp_load (char filename[]) {
 
   if(
       (err = rle_unpack(rle, BITMAP_START, 8000))
-      || (err = rle_unpack(rle, SCREEN_START, 1000))
+      || (err = rle_unpack(rle, SCREEN_START, SCREEN_BYTES))
       || (err = rle_unpack(rle, VIC_BORDERCOLOR, 1))
       || (err = rle_unpack(rle, VIC_BG_COLOR0, 1))
       || (err = rle_unpack(rle, COLOR_RAM, 14)) // This is trash

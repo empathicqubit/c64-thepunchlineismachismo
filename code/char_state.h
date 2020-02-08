@@ -38,10 +38,16 @@ typedef struct char_state char_state;
 struct char_state {
     char_type char_type; // The type of the character
 
-    unsigned int path_x; // X position within the path
-    unsigned char path_y; // Y position within the path
+    /** X position within the path. The path width is the same as the screen,
+      * but because the path is at an angle points further away from the screen
+      * get moved farther to the right.
+      */
+    unsigned int path_x;
+    /** Y position within the path. The path height is the same as the screen,
+      * but gets divided by half and pushed to the bottom half when being rendered
+      */
+    unsigned char path_y;
     unsigned char movement_speed; // pixels per jiffy
-    unsigned char sprite_slot; // The sprite number if one already exists,
 
     unsigned char default_sprite; // The default sprite in the sheet.
 
@@ -60,6 +66,5 @@ struct char_state {
 /*
  * Initializes a character with the default options
  * @param c - The character type value enum. All of these start with CHAR_TYPE_
- * @param sprite_slot - The C64 sprite slot to assign to the character.
 */
-char_state* char_state_init(char_type c, unsigned char sprite_slot);
+char_state* char_state_init(char_type c);

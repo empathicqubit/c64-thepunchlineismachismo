@@ -179,11 +179,11 @@ unsigned char spritesheet_show(unsigned char sprite_slot, unsigned char sheet_id
         return err;
     }
 
-    hi_mask = (1<<sprite_slot);
-
     if(err = sprite_move(sprite_slot, x, y)) {
         return err;
     }
+
+    hi_mask = (1<<sprite_slot);
 
     if(double_width) {
         *(unsigned char *)VIC_SPR_EXP_X |= hi_mask;

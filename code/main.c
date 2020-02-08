@@ -31,8 +31,7 @@ unsigned char intro_screen() {
     unsigned char err;
     unsigned char joyval;
 
-    screen_init(false);
-    clrscr();
+    screen_init(false, true);
 
     puts(r_text_loading);
 
@@ -88,19 +87,18 @@ unsigned char main (void) {
 
 #if !DEBUG
     if(err = intro_screen()) {
-        screen_init(false);
+        screen_init(false, false);
         while(1);
     }
 #endif
 
     if(err = play_level()) {
         printf("Level error: %x\n", err);
-        screen_init(false);
+        screen_init(false, false);
         while(1);
     }
 
-    screen_init(true);
-    clrscr();
+    screen_init(true, true);
 
     return EXIT_SUCCESS;
 }

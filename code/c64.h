@@ -9,6 +9,7 @@
 // Zero page, Commodore stuff
 
 #define CPU_PORT                                    0x01
+#define CPU_PORT_BASIC_ROM_VISIBLE_KERNAL_VISIBLE   0x03
 #define CPU_PORT_IO_VISIBLE_CHARACTER_ROM_INVISIBLE 0x04
 
 #define VARTAB 0x2D
@@ -30,6 +31,8 @@
 #define CURS_Y           0xD6          // Cursor row
 #define CRAM_PTR         0xF3          // Pointer to current char in color RAM
 #define FREKZP           0xFB          // Five unused bytes
+
+#define SCREEN_BYTES 1000
 
 #define SCREEN_BITMAP_WIDTH 320
 #define SCREEN_BITMAP_HEIGHT 200

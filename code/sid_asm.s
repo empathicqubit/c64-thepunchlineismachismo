@@ -25,6 +25,8 @@ _sid_play:
     rts
 
 ; void __fastcall__ sid_sound_play_int(unsigned char idx, unsigned char* startaddress)
+; AX startaddress
+; idx on stack
 
 _sid_play_sound_int:
     sta ptr1
@@ -33,5 +35,7 @@ _sid_play_sound_int:
     tax
     lda ptr1
     ldy ptr1+1
+    ; channel X
+    ; sound data lo/hi AY
     jsr SID_START+6
     rts

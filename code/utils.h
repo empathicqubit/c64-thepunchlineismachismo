@@ -1,5 +1,7 @@
 #include <stdbool.h>
 
+#define FRAMES_PER_SEC 50
+
 /** Check if system is actually PAL and store in the PALFLAG
  * More reliable than the system's flag apparently.
  */
@@ -12,8 +14,9 @@ void wait (unsigned int duration);
 
 /** Reset the screen to VIC bank #2
  * @param use_graphics_charset - Use fancy graphics chars with no lowercase
+ * @param clear - Clear the screen before switching to it.
  */
-void screen_init (bool use_graphics_charset);
+void screen_init (bool use_graphics_charset, bool clear);
 
 /** Write a value to stdout
  * @param value - The value to write

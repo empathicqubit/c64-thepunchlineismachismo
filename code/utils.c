@@ -42,11 +42,21 @@ void character_init(void) {
     *(unsigned char *)CIA1_CRA |= CIA1_CR_START_STOP;
 }
 
-/* Reset the screen to VIC bank #3
+/** Reset the screen to VIC bank #3
  * @param use_graphics_charset - Use fancy graphics chars with no lowercase
+ * @param clear - Clear the screen before switching to it
  */
-void screen_init (bool use_graphics_charset) {
+void screen_init (bool use_graphics_charset, bool clear) {
     unsigned char screen_ptr = ((SCREEN_START % VIC_BANK_SIZE) / VIC_VIDEO_ADR_SCREEN_DIVISOR) << 4;
+
+    // Update kernal
+    *(unsigned char *)SCREEN_IO_HI_PTR = SCREEN_START >> 8;
+
+    if(clear) clrscr();
+
+    // Fix HLINE IRQ
+    *(unsigned char*)VIC_HLINE = SCREEN_SPRITE_BORDER_Y_END;
+    *(unsigned char*)VIC_CTRL1 &= ~VIC_CTRL1_HLINE_MSB;
 
     // Switch to bank 3
     *(unsigned char *)CIA2_PRA &= ~3;
@@ -62,9 +72,6 @@ void screen_init (bool use_graphics_charset) {
     // Switch off bitmap mode
     *(unsigned char *)VIC_CTRL1 &= ~VIC_CTRL1_BITMAP_ON;
     *(unsigned char *)VIC_CTRL2 &= ~VIC_CTRL2_MULTICOLOR_ON;
-
-    // Update kernal
-    *(unsigned char *)SCREEN_IO_HI_PTR = SCREEN_START >> 8;
 
     bgcolor(COLOR_BLACK);
 }

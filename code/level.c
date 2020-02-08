@@ -15,6 +15,8 @@
 #define MAX_SCREEN_CHARACTERS 16
 #define MAX_SCREENS 16
 
+void debug_marker() {}
+
 typedef struct level_screen level_screen;
 struct level_screen {
     char_state* characters[MAX_SCREEN_CHARACTERS];
@@ -98,6 +100,24 @@ unsigned char process_cpu_input(void) {
     return EXIT_SUCCESS;
 }
 
+void depth_sort(char_state **characters) {
+    int i, j; 
+    char_state *key;
+    for (i = 1; i < MAX_SCREEN_CHARACTERS; i++) { 
+        key = characters[i]; 
+        j = i - 1; 
+  
+        /* Move elements of arr[0..i-1], that are 
+          greater than key, to one position ahead 
+          of their current position */
+        while (j >= 0 && characters[j] && key && characters[j]->path_y < key->path_y) { 
+            characters[j + 1] = characters[j]; 
+            j = j - 1; 
+        } 
+        characters[j + 1] = key; 
+    } 
+}
+
 unsigned char update(void) {
     unsigned char i;
     unsigned char j;
@@ -105,7 +125,9 @@ unsigned char update(void) {
     char_state* other;
     char_action_flag action_flags;
     char_state* me;
+
     level_screen* screen = state->screens[state->screen_index];
+    bool my_last_resort = false;
 
     for(i = 0; i < MAX_SCREEN_CHARACTERS; i++) {
         me = screen->characters[i];
@@ -134,12 +156,11 @@ unsigned char update(void) {
         action_time = now - me->action_start;
         status_time = now - me->status_start;
 
-        if((me->status_flags & CHAR_STATUS_INVINCIBLE) && status_time > 90) {
+        if((me->status_flags & CHAR_STATUS_INVINCIBLE) && status_time > (FRAMES_PER_SEC*3/2)) {
             me->status_flags &= ~CHAR_STATUS_INVINCIBLE;
         }
 
-        if((action_flags & CHAR_ACTION_DYING) && action_time > 60) {
-            sprite_hide(me->sprite_slot);
+        if((action_flags & CHAR_ACTION_DYING) && action_time > FRAMES_PER_SEC) {
             screen->characters[i] = NULL;
             free(me);
         }
@@ -150,7 +171,7 @@ unsigned char update(void) {
         }
 
         if(action_flags & CHAR_ACTION_ATTACKING) {
-            if(action_time > 10 && action_time < 20) {
+            if(action_time > (FRAMES_PER_SEC/6) && action_time < (FRAMES_PER_SEC/3)) {
                 for(j = 0; j < MAX_SCREEN_CHARACTERS; j++) {
                     other = screen->characters[j];
                     if(!other || other == me) {
@@ -185,7 +206,7 @@ unsigned char update(void) {
                     }
                 }
             }
-            else if(action_time > 30) {
+            else if(action_time > (FRAMES_PER_SEC/2)) {
                 me->action_flags &= ~CHAR_ACTION_ATTACKING;
             }
         }
@@ -216,6 +237,8 @@ unsigned char update(void) {
                         me->path_y = 0;
                     }
                 }
+
+                my_last_resort = true;
             }
 
             if(me->path_y > SCREEN_SPRITE_BORDER_HEIGHT / 2) {
@@ -228,18 +251,19 @@ unsigned char update(void) {
         }
     }
 
+    if(my_last_resort && now % 2 == 0) {
+        depth_sort(screen->characters);
+    }
+
     return EXIT_SUCCESS;
 }
 
-void cycle_marker(void) {
-}
-
 unsigned char render() {
-    unsigned char i, sheet_idx, char_type, action_flags, kbchar;
+    unsigned char i, sheet_idx, action_flags;
     bool animate = true;
     sprite_sequence* selected_sprite;
     char_sprite_group* selected_char;
-    char_state* me;
+    char_state *me;
     unsigned int animation_time;
 
     sprite_sequence* after_finish = NULL;
@@ -255,21 +279,19 @@ unsigned char render() {
         selected_char = SPRITES[me->char_type];
 
         if(now % 5 == 0) {
-            cycle_marker();
             cputs("x: ");
             cputs_hex_value(me->path_x);
             cputs(" y: ");
             cputs_hex_value(me->path_y);
+            cputs(" i: ");
+            cputs_hex_value(i);
             cputs(" hp: ");
             cputs_hex_value(me->hitpoints);
             cputs(" a: ");
             cputs_hex_value(me->action_flags);
-            cputs(" s: ");
-            cputs_hex_value(me->sprite_slot);
             cputs(" c: ");
             cputs_hex_value(me->char_type);
             puts("");
-            cycle_marker();
         }
 
         action_flags = me->action_flags;
@@ -329,9 +351,7 @@ unsigned char render() {
             }
         }
 
-        spritesheet_set_image(me->sprite_slot, sheet_idx);
-        //sprite_move(me->sprite_slot, me->path_x, me->path_y);
-        sprite_move(me->sprite_slot, SCREEN_SPRITE_BORDER_X_START + me->path_x + ((SCREEN_SPRITE_BORDER_HEIGHT / 2 - me->path_y) / 4), (me->path_y / 2) + (SCREEN_SPRITE_BORDER_HEIGHT * 3 / 4));
+        spritesheet_show(i % VIC_SPR_COUNT, sheet_idx, SCREEN_SPRITE_BORDER_X_START + me->path_x + ((SCREEN_SPRITE_BORDER_HEIGHT / 2 - me->path_y) / 4), (me->path_y / 2) + (SCREEN_SPRITE_BORDER_HEIGHT * 3 / 4), true, true);
     }
 
     return EXIT_SUCCESS;
@@ -348,9 +368,31 @@ unsigned char level_irq_handler(void) {
     return consume_raster_irq(&level_raster_irq);
 }
 
+unsigned char level_screen_add_character(level_screen* screen, char_state* chara) {
+    unsigned char i;
+    char_state* cur;
+    for(i = 0; i < MAX_SCREEN_CHARACTERS; i++) {
+        cur = screen->characters[i];
+        if(!cur) {
+            break;
+        }
+        
+        if(chara->path_y > cur->path_y) {
+            break;
+        }
+    }
+
+    screen->characters[i] = chara;
+    i++;
+
+    for(; i < MAX_SCREEN_CHARACTERS; i++) {
+        screen->characters[i] = cur;
+        cur = screen->characters[i+1];
+    }
+}
+
 unsigned char play_level (void) {
-    char_state* me;
-    unsigned char err, i;
+    unsigned char err;
 
     level_screen* screen = calloc(1, sizeof(level_screen));
 
@@ -366,30 +408,20 @@ unsigned char play_level (void) {
         return EXIT_FAILURE;
     }
 
-    screen_init(false);
-    clrscr();
-
-    state->guy = char_state_init(CHAR_TYPE_GUY, 0);
+    state->guy = char_state_init(CHAR_TYPE_GUY);
 
     state->screen_index = 0;
 
-    screen->characters[0] = state->guy;
-    screen->characters[1] = char_state_init(CHAR_TYPE_MOOSE, 1);
+    level_screen_add_character(screen, state->guy);
+    level_screen_add_character(screen, char_state_init(CHAR_TYPE_MOOSE));
+
+    gotoxy(0, 20);
 
     state->screens[0] = screen;
 
-    for(i = 0; i < MAX_SCREEN_CHARACTERS; i++) {
-        me = screen->characters[i];
-
-        if(!me) continue;
-
-        me->sprite_slot = i;
-
-        // FIXME These xy calcs are wrong.
-        spritesheet_show(me->sprite_slot, me->default_sprite, me->path_x, me->path_y, true, true);
-    }
-
     setup_irq_handler(&level_irq_handler);
+
+    screen_init(false, true);
 
     while (true)
     {

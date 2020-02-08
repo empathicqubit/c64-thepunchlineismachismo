@@ -2,10 +2,9 @@
 #include "../resources/sprites/canada.h"
 #include "char_state.h"
 
-char_state* char_state_init(char_type c, unsigned char sprite_slot) {
+char_state* char_state_init(char_type c) {
     char_state* state = calloc(1, sizeof(char_state));
     state->char_type = c;
-    state->sprite_slot = sprite_slot;
     if(c == CHAR_TYPE_GUY) {
         state->path_x = 25;
         state->path_y = 25;
@@ -17,7 +16,7 @@ char_state* char_state_init(char_type c, unsigned char sprite_slot) {
         state->movement_speed = 1;
         state->hitpoints = 5;
         state->path_x = 160;
-        state->path_y = 25;
+        state->path_y = 50;
     }
 
     return state;

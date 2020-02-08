@@ -1,1 +1,4 @@
 load_labels "build/machismo.lbl"
+watch exec ._debug_marker if @cpu:.CIA2_PRA == $c4
+bk ._level_raster_irq
+dis 2

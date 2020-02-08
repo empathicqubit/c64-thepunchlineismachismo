@@ -1,16 +1,17 @@
 #include "canada.h"
+#include "../../code/utils.h"
 
 sprite_sequence _sprites_guy[] = {
     {0x00, 1, 1}, // neutral
 
-    {0x01, 3, 5}, // walk_right
-    {0x04, 3, 5}, // walk_left
+    {0x01, 3, FRAMES_PER_SEC/10}, // walk_right
+    {0x04, 3, FRAMES_PER_SEC/10}, // walk_left
 
-    {0x07, 2, 15}, // attack_right
-    {0x09, 2, 15}, // attack_left
+    {0x07, 2, FRAMES_PER_SEC/4}, // attack_right
+    {0x09, 2, FRAMES_PER_SEC/4}, // attack_left
 
-    {0x0b, 1, 60}, // oof_right
-    {0x0c, 1, 60}, // oof_left
+    {0x0b, 1, FRAMES_PER_SEC}, // oof_right
+    {0x0c, 1, FRAMES_PER_SEC}, // oof_left
 };
 
 char_sprite_group _sprites_group_guy = {
@@ -35,8 +36,8 @@ sprite_sequence _sprites_moose[] = {
     {0x10, 1, 1}, // attack_right
     {0x11, 1, 1}, // attack_left
 
-    {0x12, 1, 30}, // oof_right
-    {0x13, 1, 30}, // oof_left
+    {0x12, 1, FRAMES_PER_SEC/4}, // oof_right
+    {0x13, 1, FRAMES_PER_SEC/4}, // oof_left
 };
 
 char_sprite_group _sprites_group_moose = {
