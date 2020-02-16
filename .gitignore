@@ -2,6 +2,7 @@ build/
 resources/generated/
 node_modules/
 .vscode/
+!.vscode/launch.json
 *.o
 *.sprite.*
 /*.d81
