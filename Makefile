@@ -81,7 +81,7 @@ build/empty.d81: build/.sentinel
 build/machismo.prg: build/.sentinel linker.cfg $(code) resources/text.s $(charset) $(music)
 	sidsize=$$(stat -c'%s' $(music) | sort -nr | head -1) 
 	echo "SID SIZE $$sidsize"
-	cl65 -Osr -g -t c64 -C linker.cfg -Wa "-DSID_START=\$$$(SID_HIGHBYTE)00" -Wc "-DBITMAP_START=0x$(BITMAP_START)" -Wc "-DSCREEN_START=0x$(SCREEN_START)" "-DSID_START=0x$(SID_HIGHBYTE)00" -Wc "-DSID_SIZE=$$sidsize" -Wl "-Lnbuild/machismo.lbl" -Wl "--dbgfile,build/machismo.dbg" -o $@ -O $(filter %.c %.s,$^)
+	cl65 -Osr -g -t c64 -C linker.cfg -Wa "-DSID_START=\$$$(SID_HIGHBYTE)00" -Wc "-DBITMAP_START=0x$(BITMAP_START)" -Wc "-DSCREEN_START=0x$(SCREEN_START)" "-DSID_START=0x$(SID_HIGHBYTE)00" -Wc "-DSID_SIZE=$$sidsize" -Wl "-Lnbuild/machismo.lbl" -vm -Wl "--mapfile,build/machismo.map" -Wl "--dbgfile,build/machismo.dbg" -o $@ -O $(filter %.c %.s,$^)
 
 resources/audio/canada.snz: $(sounds)
 	sound_header="\x$$(printf '%x' $(words $(sounds)))"

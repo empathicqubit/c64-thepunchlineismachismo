@@ -10,10 +10,11 @@ extern void sid_play (void);
 
 extern void __fastcall__ sid_play_sound_int(unsigned char idx, unsigned char* startaddress);
 
-typedef struct {
+struct snz_file {
     unsigned char count;
     unsigned char offsets[];
-} snz_file;
+};
+typedef struct snz_file snz_file;
 
 unsigned char sid_play_sound(unsigned char* snz_pointer, unsigned char sound_idx, unsigned char channel_idx) {
     snz_file* snz = (snz_file*)snz_pointer;

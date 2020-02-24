@@ -40,12 +40,13 @@ unsigned char spritesheet_animation_next(unsigned int action_time, unsigned char
     return sheet_idx_begin + ((action_time % (animation_length * frame_duration)) / frame_duration);
 }
 
-typedef struct {
+struct spd_sprite {
     unsigned char sprite_data[63];
     unsigned char metadata;
-} spd_sprite;
+};
+typedef struct spd_sprite spd_sprite;
 
-typedef struct {
+struct spd {
     unsigned char magic[3];
     unsigned char version;
     unsigned char sprite_count;
@@ -54,7 +55,8 @@ typedef struct {
     unsigned char multicolor_0;
     unsigned char multicolor_1;
     spd_sprite sprites[];
-} spd;
+};
+typedef struct spd spd;
 
 const unsigned char* SPRITE_AREA = SCREEN_START + VIC_VIDEO_ADR_SCREEN_DIVISOR + VIC_SPR_SIZE - 9;
 const unsigned char SPRITE_MAX = 47;

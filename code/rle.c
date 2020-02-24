@@ -5,16 +5,18 @@
 #include "rle.h"
 #include "c64.h"
 
-typedef struct {
+struct rle_pair {
     unsigned char count;
     unsigned char byte;
-} rle_pair;
+} ;
+typedef struct rle_pair rle_pair;
 
-typedef struct {
+struct rle {
     unsigned int count;
     unsigned int unpacked_size;
     rle_pair pairs[];
-} rle;
+};
+typedef struct rle rle;
 
 struct rle_cursor {
     void* src;

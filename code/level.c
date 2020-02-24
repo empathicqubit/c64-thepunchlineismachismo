@@ -1,8 +1,5 @@
-#include <joystick.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <6502.h>
-#include <conio.h>
 #include <time.h>
 #include <stdbool.h>
 #include "utils.h"
@@ -11,6 +8,9 @@
 #include "sid.h"
 #include "../resources/sprites/canada.h"
 #include "char_state.h"
+#include <joystick.h>
+#include <6502.h>
+#include <conio.h>
 
 #define MAX_SCREEN_CHARACTERS 16
 #define MAX_SCREENS 16
@@ -73,6 +73,8 @@ unsigned char process_cpu_input(void) {
 
     for(i = 0; i < MAX_SCREEN_CHARACTERS; i++) {
         me = screen->characters[i];
+
+        if(!me) continue;
 
         if(me->char_type == CHAR_TYPE_MOOSE) {
             if(rand() % 16 == 0) {
