@@ -12,8 +12,6 @@
        "buildCommand": "make OPTIONS=mapfile,labelfile,debugfile",
        "stopOnEntry": true,
        "viceArgs": [
-           "+autostart-warp",
-           "+warp",
            "-model", "ntsc"
        ]
    }

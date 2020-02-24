@@ -34,6 +34,44 @@ struct level_state {
 level_state* state;
 unsigned int now; 
 
+unsigned char level_screen_delete_character(level_screen* screen, unsigned char idx) {
+    char_state** charas = screen->characters;
+    char_state* cur = charas[idx];
+    sprite_hide(idx);
+    for(; idx < MAX_SCREEN_CHARACTERS - 1; idx++) {
+        charas[idx] = charas[idx+1];
+        if(!charas[idx]) {
+            sprite_hide(idx % VIC_SPR_COUNT);
+        }
+    }
+    free(cur);
+
+    return EXIT_SUCCESS;
+}
+
+unsigned char level_screen_add_character(level_screen* screen, char_state* chara) {
+    unsigned char i;
+    char_state* cur;
+    for(i = 0; i < MAX_SCREEN_CHARACTERS; i++) {
+        cur = screen->characters[i];
+        if(!cur) {
+            break;
+        }
+        
+        if(chara->path_y > cur->path_y) {
+            break;
+        }
+    }
+
+    screen->characters[i] = chara;
+    i++;
+
+    for(; i < MAX_SCREEN_CHARACTERS; i++) {
+        screen->characters[i] = cur;
+        cur = screen->characters[i+1];
+    }
+}
+
 unsigned char process_input(void) {
     unsigned char joyval = joy_read(0x01);
     char_state* guy = state->guy;
@@ -163,8 +201,8 @@ unsigned char update(void) {
         }
 
         if((action_flags & CHAR_ACTION_DYING) && action_time > FRAMES_PER_SEC) {
-            screen->characters[i] = NULL;
-            free(me);
+            level_screen_delete_character(screen, i);
+            break;
         }
 
         // Dying precludes attacking and moving
@@ -368,29 +406,6 @@ void level_raster_irq(void) {
 
 unsigned char level_irq_handler(void) {
     return consume_raster_irq(&level_raster_irq);
-}
-
-unsigned char level_screen_add_character(level_screen* screen, char_state* chara) {
-    unsigned char i;
-    char_state* cur;
-    for(i = 0; i < MAX_SCREEN_CHARACTERS; i++) {
-        cur = screen->characters[i];
-        if(!cur) {
-            break;
-        }
-        
-        if(chara->path_y > cur->path_y) {
-            break;
-        }
-    }
-
-    screen->characters[i] = chara;
-    i++;
-
-    for(; i < MAX_SCREEN_CHARACTERS; i++) {
-        screen->characters[i] = cur;
-        cur = screen->characters[i+1];
-    }
 }
 
 unsigned char play_level (void) {
