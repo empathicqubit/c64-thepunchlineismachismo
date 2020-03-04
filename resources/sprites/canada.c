@@ -30,14 +30,14 @@ char_sprite_group _sprites_group_guy = {
 sprite_sequence _sprites_moose[] = {
     {0x0d, 1, 1}, // neutral
 
-    {0x0e, 1, 1}, // walk_right
-    {0x0f, 1, 1}, // walk_left
+    {0x0d, 2, 1}, // walk_right
+    {0x0f, 2, 1}, // walk_left
 
-    {0x10, 1, 1}, // attack_right
-    {0x11, 1, 1}, // attack_left
+    {0x12, 1, 1}, // attack_right
+    {0x13, 1, 1}, // attack_left
 
-    {0x12, 1, FRAMES_PER_SEC/4}, // oof_right
-    {0x13, 1, FRAMES_PER_SEC/4}, // oof_left
+    {0x14, 1, FRAMES_PER_SEC/4}, // oof_right
+    {0x15, 1, FRAMES_PER_SEC/4}, // oof_left
 };
 
 char_sprite_group _sprites_group_moose = {

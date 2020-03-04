@@ -9,6 +9,7 @@ node_modules/
 /*.prg
 *.sid
 *.ocr
+*.ser
 *.sidp
 *.lbl
 *.pem

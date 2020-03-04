@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <c64.h>
+#include <cbm.h>
 #include <string.h>
 #include "rle.h"
+#include "utils.h"
 #include "c64.h"
 
 struct rle_pair {
@@ -30,28 +32,32 @@ struct rle_cursor {
  * @param unpacked_size - Sets the unpacked size of the file, the only attribute we want to expose to the caller.
  * @return A read cursor which points to the data in memory and can be used to retrieve the file a piece at a time
  */
-rle_cursor* rle_load_file(FILE* fp, unsigned char* dest, unsigned int* unpacked_size) {
+rle_cursor* rle_open(unsigned char* filename, unsigned int* unpacked_size) {
     unsigned int count;
     rle* data;
     rle_cursor* cursor;
-    if(!fread(&count, sizeof(unsigned int), 1, fp)) {
+    FILE* fp;
+
+    if(!(fp = fopen(filename, "rb"))
+        || !fread(&count, sizeof(unsigned int), 1, fp)) {
         fclose(fp);
         return NULL;
     }
+    fclose(fp);
 
-    data = (rle*)dest;
-
-    if(!data) {
-        data = malloc(4 + count * sizeof(rle_pair));
-    }
+    data = malloc(4 + count * sizeof(rle_pair));
 
     data->count = count;
+    data->unpacked_size = 0;
+
+    cbm_k_setlfs(utils_get_unused_lfn(), 8, 0);
+    cbm_k_setnam(filename);
 
     if(
-            !fread(&(data->unpacked_size), sizeof(unsigned int), 1, fp)
-            || !fread(&(data->pairs), sizeof(rle_pair), count, fp)
+        !cbm_k_load(0, &((unsigned int*)data)[1])
+        || !data->unpacked_size
       ) {
-        fclose(fp);
+        free(data);
         return NULL;
     }
 
@@ -64,8 +70,19 @@ rle_cursor* rle_load_file(FILE* fp, unsigned char* dest, unsigned int* unpacked_
     return cursor;
 }
 
+/** Close an RLE cursor
+ * @param cursor - RLE data pointer
+ * @return Whether we were successful
+ */
+unsigned char rle_close(rle_cursor* cursor) {
+    free(cursor->src);
+    free(cursor);
+
+    return EXIT_SUCCESS;
+}
+
 /** RLE unpack data in memory
- * @param src - RLE data pointer
+ * @param cursor - RLE data pointer
  * @param dest - Destination pointer
  * @param seek - Index of first RLE pair to read
  * @param count - How many unpacked bytes to write before stopping
@@ -105,9 +122,6 @@ unsigned char rle_unpack(rle_cursor* cursor, unsigned char* dest, unsigned int c
     }
 
     if(i < data->count) return EXIT_SUCCESS;
-
-    free(data);
-    free(cursor);
 
     return EXIT_SUCCESS;
 }

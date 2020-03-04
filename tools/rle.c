@@ -41,7 +41,7 @@ int main(int argc, char* argv[]) {
             count = 0;
         }
         count++;
-        printf("C %d L %d C %d W %d\n", current, last, count, write_index);
+        fprintf(stderr, "C %d L %d C %d W %d\n", current, last, count, write_index);
         last = current;
     }
 

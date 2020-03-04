@@ -51,6 +51,8 @@ cp-c64: /mnt/chromeos/removable/C64/$(D81)
 
 sprites := $(wildcard resources/sprites/*.spd)
 
+seq := $(patsubst %.seq,%.ser,$(wildcard resources/seq/*.seq))
+
 ntsc_music := $(patsubst %.sng,%.sid,$(wildcard resources/audio/*.sng))
 
 pal_music := $(patsubst %.sid,%.sidp,$(ntsc_music))
@@ -70,13 +72,13 @@ bitmaps := $(patsubst %.ocp,%.ocr,$(wildcard resources/bitmap/*.ocp))
 
 code := $(wildcard code/*.c) $(wildcard code/*.s) resources/sprites/canada.c
 
-build/machismo.d81: build/empty.d81 build/machismo.prg $(music) $(bitmaps) $(sprites) resources/audio/canada.snz build/.sentinel 
+build/machismo.d81: build/empty.d81 build/machismo.prg $(music) $(bitmaps) $(sprites) $(seq) resources/audio/canada.snz build/.sentinel 
 	# Writes all files that have changed.
 	c1541 -attach $@ $(foreach content,$(filter-out $<,$?), -delete $(notdir $(content)) -write $(content) $(notdir $(content)))
 
 build/empty.d81: build/.sentinel
-	c1541 -format "canada,01" d81 $@
-	test ! -f "build/$(D81)" && cp $@ build/$(D81) || exit 0
+	c1541 -format "canada,01" d81 "$@"
+	test ! -f "build/$(D81)" && cp "$@" "build/$(D81)" || exit 0
 
 build/machismo.prg: build/.sentinel linker.cfg $(code) resources/text.s $(charset) $(music)
 	sidsize=$$(stat -c'%s' $(music) | sort -nr | head -1) 
@@ -98,20 +100,23 @@ resources/audio/canada.snz: $(sounds)
 
 %.sidp: %.sng
 	# PAL
-	gt2reloc $< $@.bin $(GT2RELOC_OPTS)
-	mv $@.bin $@
-
-%.ocr: %.ocp build/rle
-	build/rle $< $@
-
-build/rle: tools/rle.c build/.sentinel
-	gcc -o $@ $<
+	gt2reloc "$<" "$@.bin" $(GT2RELOC_OPTS)
+	mv "$@.bin" "$@"
 
 %.sid: %.sng
 	# You need to set the correct extension otherwise the output format will be SIDPlay!!!
 	# NTSC
-	gt2reloc $< $@.bin $(GT2RELOC_OPTS) -G424
-	mv $@.bin $@
+	gt2reloc "$<" "$@.bin" $(GT2RELOC_OPTS) -G424
+	mv "$@.bin" "$@"
+
+build/rle: tools/rle.c build/.sentinel
+	gcc -o "$@" "$<"
+
+%.ocr: %.ocp build/rle
+	build/rle "$<" "$@"
+
+%.ser: %.seq build/rle
+	build/rle "$<" "$@"
 
 ./docker: ./docker/Dockerfile ./docker/cert.pem ./docker/cc65.tar.gz ./docker/goattracker.zip
 

@@ -6,7 +6,13 @@ typedef struct rle_cursor rle_cursor;
  * @param unpacked_size - Sets the unpacked size of the file, the only attribute we want to expose to the caller.
  * @return A read cursor which points to the data in memory and can be used to retrieve the file a piece at a time
  */
-rle_cursor* rle_load_file(FILE* fp, unsigned char* dest, unsigned int* unpacked_size);
+rle_cursor* rle_open(unsigned char* filename, unsigned int* unpacked_size);
+
+/** Close an RLE cursor
+ * @param cursor - RLE data pointer
+ * @return Status code
+ */
+unsigned char rle_close(rle_cursor* cursor);
 
 /** RLE unpack data in memory
  * @param src - RLE data cursor obtained from rle_load_file

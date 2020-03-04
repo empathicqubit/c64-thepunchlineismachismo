@@ -12,8 +12,9 @@
 #include "utils.h"
 #include "sprite.h"
 #include "level.h"
+#include "seq.h"
 
-#define DEBUG 1
+//#define DEBUG 1
 
 extern const unsigned char r_text_loading[];
 extern const unsigned char r_text_loading2[];
@@ -28,10 +29,19 @@ unsigned char main_irq_handler(void) {
 }
 
 unsigned char intro_screen() {
-    unsigned char err;
-    unsigned char joyval;
+    unsigned char err, joyval;
+    unsigned char* data;
+    unsigned int data_size;
 
-    screen_init(false, true);
+    screen_init(true, true);
+
+    if(!(data = seq_load("newscreen.ser", &data_size))
+        || !fwrite(data, data_size, 1, stdout)) {
+        printf("Text load error\n");
+        return EXIT_FAILURE;
+    }
+
+    while(1);
 
     puts(r_text_loading);
 

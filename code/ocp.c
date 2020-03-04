@@ -8,23 +8,20 @@ unsigned char ocp_load (char filename[]) {
   unsigned char addr[2];
   unsigned char err;
   unsigned int unpacked_size;
-  FILE* fp;
   rle_cursor* rle;
 
-  // open the file
-  fp = fopen(filename, "rb");
-
-  if(!(rle = rle_load_file(fp, NULL, &unpacked_size))) {
-      fclose(fp);
+  if(!(rle = rle_open(filename, &unpacked_size))) {
       return EXIT_FAILURE;
   }
 
   if(err = rle_unpack(rle, addr, 2)) {
+    rle_close(rle);
     return err;
   }
 
   // make sure load address is $2000
   if (addr[0] != 0x00 || addr[1] != 0x20) {
+    rle_close(rle);
     return EXIT_FAILURE;
   }
 
@@ -42,8 +39,11 @@ unsigned char ocp_load (char filename[]) {
       || (err = rle_unpack(rle, COLOR_RAM, 14)) // This is trash
       || (err = rle_unpack(rle, COLOR_RAM, 1000))
   ) {
+      rle_close(rle);
       return err;
   }
+
+  rle_close(rle);
 
   return EXIT_SUCCESS;
 }

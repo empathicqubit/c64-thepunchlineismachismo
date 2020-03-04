@@ -42,6 +42,15 @@ void character_init(void) {
     *(unsigned char *)CIA1_CRA |= CIA1_CR_START_STOP;
 }
 
+static unsigned char _utils_lfn = 0x1f;
+
+/** Get an unused logical file number for setlfs
+ * @return The next unused LFN
+ */
+unsigned char utils_get_unused_lfn(void) {
+    return _utils_lfn--;
+}
+
 /** Reset the screen to VIC bank #3
  * @param use_graphics_charset - Use fancy graphics chars with no lowercase
  * @param clear - Clear the screen before switching to it

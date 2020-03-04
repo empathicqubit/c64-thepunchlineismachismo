@@ -12,6 +12,11 @@ void pal_system(void);
  */
 void wait (unsigned int duration);
 
+/** Get an unused logical file number for setlfs
+ * @return The next unused LFN
+ */
+unsigned char utils_get_unused_lfn(void);
+
 /** Reset the screen to VIC bank #2
  * @param use_graphics_charset - Use fancy graphics chars with no lowercase
  * @param clear - Clear the screen before switching to it.

@@ -15,6 +15,9 @@
 #define MAX_SCREEN_CHARACTERS 16
 #define MAX_SCREENS 16
 
+#define MAX_PATH_X (SCREEN_SPRITE_BORDER_WIDTH - 40)
+#define MAX_PATH_Y (SCREEN_SPRITE_BORDER_HEIGHT / 2)
+
 void debug_marker() {}
 
 typedef struct level_screen level_screen;
@@ -34,9 +37,26 @@ struct level_state {
 level_state* state;
 unsigned int now; 
 
+void depth_sort(char_state **characters) {
+    int i, j; 
+    char_state *key;
+    for (i = 1; i < MAX_SCREEN_CHARACTERS; i++) { 
+        key = characters[i]; 
+        j = i - 1; 
+  
+        /* Move elements of arr[0..i-1], that are 
+          greater than key, to one position ahead 
+          of their current position */
+        while (j >= 0 && characters[j] && key && characters[j]->path_y < key->path_y) { 
+            characters[j + 1] = characters[j]; 
+            j = j - 1; 
+        } 
+        characters[j + 1] = key; 
+    } 
+}
+
 unsigned char level_screen_delete_character(level_screen* screen, unsigned char idx) {
     char_state** charas = screen->characters;
-    char_state* cur = charas[idx];
     sprite_hide(idx);
     for(; idx < MAX_SCREEN_CHARACTERS - 1; idx++) {
         charas[idx] = charas[idx+1];
@@ -44,32 +64,23 @@ unsigned char level_screen_delete_character(level_screen* screen, unsigned char 
             sprite_hide(idx % VIC_SPR_COUNT);
         }
     }
-    free(cur);
 
     return EXIT_SUCCESS;
 }
 
 unsigned char level_screen_add_character(level_screen* screen, char_state* chara) {
-    unsigned char i;
-    char_state* cur;
-    for(i = 0; i < MAX_SCREEN_CHARACTERS; i++) {
-        cur = screen->characters[i];
-        if(!cur) {
-            break;
-        }
-        
-        if(chara->path_y > cur->path_y) {
+    signed char i;
+    char_state** charas = screen->characters;
+    for(i = MAX_SCREEN_CHARACTERS - 1; i >= 0; i--) {
+        if(charas[i]) {
             break;
         }
     }
 
-    screen->characters[i] = chara;
-    i++;
+    charas[i+1] = chara;
+    depth_sort(charas);
 
-    for(; i < MAX_SCREEN_CHARACTERS; i++) {
-        screen->characters[i] = cur;
-        cur = screen->characters[i+1];
-    }
+    return EXIT_SUCCESS;
 }
 
 unsigned char process_input(void) {
@@ -140,27 +151,29 @@ unsigned char process_cpu_input(void) {
     return EXIT_SUCCESS;
 }
 
-void depth_sort(char_state **characters) {
-    int i, j; 
-    char_state *key;
-    for (i = 1; i < MAX_SCREEN_CHARACTERS; i++) { 
-        key = characters[i]; 
-        j = i - 1; 
-  
-        /* Move elements of arr[0..i-1], that are 
-          greater than key, to one position ahead 
-          of their current position */
-        while (j >= 0 && characters[j] && key && characters[j]->path_y < key->path_y) { 
-            characters[j + 1] = characters[j]; 
-            j = j - 1; 
-        } 
-        characters[j + 1] = key; 
-    } 
+unsigned char move_to_screen(unsigned char screen_idx, unsigned char guy_idx) {
+    unsigned char err;
+    level_screen* dest_screen = state->screens[screen_idx];
+
+    if(screen_idx > MAX_SCREEN_CHARACTERS || !dest_screen) {
+        return EXIT_FAILURE;
+    }
+
+    if(err = level_screen_delete_character(state->screens[state->screen_index], guy_idx)) {
+        return err;
+    }
+
+    state->screen_index = screen_idx;
+
+    if(err = level_screen_add_character(dest_screen, state->guy)) {
+        return err;
+    }
+
+    return EXIT_SUCCESS;
 }
 
 unsigned char update(void) {
-    unsigned char i;
-    unsigned char j;
+    unsigned char i, j, err;
     unsigned int action_time, status_time;
     char_state* other;
     char_action_flag action_flags;
@@ -202,6 +215,7 @@ unsigned char update(void) {
 
         if((action_flags & CHAR_ACTION_DYING) && action_time > FRAMES_PER_SEC) {
             level_screen_delete_character(screen, i);
+            free(me);
             break;
         }
 
@@ -223,12 +237,12 @@ unsigned char update(void) {
                         && (
                             (action_flags & CHAR_ACTION_DIRECTION_RIGHTLEFT)
                             // Attacker facing left
-                            && (
+                            ? (
                                 (me->path_x < other->path_x + 50)
-                                && (me->path_x > other->path_x - 10) 
+                                && (me->path_x >= other->path_x) 
                             )
                             // Attacker facing right
-                            || (
+                            : (
                                 (me->path_x + 50 > other->path_x) 
                                 && (me->path_x + 50 < other->path_x + 60)
                             )
@@ -258,7 +272,13 @@ unsigned char update(void) {
                         me->path_x -= me->movement_speed;
                     }
                     else {
-                        me->path_x = 0;
+                        if(state->guy == me && !(err = move_to_screen(state->screen_index - 1, i))) {
+                            me->path_x = MAX_PATH_X;
+                            break;
+                        }
+                        else {
+                            me->path_x = 0;
+                        }
                     }
                 }
                 else {
@@ -281,12 +301,18 @@ unsigned char update(void) {
                 my_last_resort = true;
             }
 
-            if(me->path_y > SCREEN_SPRITE_BORDER_HEIGHT / 2) {
-                me->path_y = SCREEN_SPRITE_BORDER_HEIGHT / 2;
+            if(me->path_y > MAX_PATH_Y) {
+                me->path_y = MAX_PATH_Y;
             }
 
-            if(me->path_x > SCREEN_SPRITE_BORDER_WIDTH - 40) {
-                me->path_x = SCREEN_SPRITE_BORDER_WIDTH - 40;
+            if(me->path_x > MAX_PATH_X) {
+                if(state->guy == me && !(err = move_to_screen(state->screen_index + 1, i))) {
+                    me->path_x = 0;
+                    break;
+                }
+                else {
+                    me->path_x = MAX_PATH_X;
+                }
             }
         }
     }
@@ -317,22 +343,6 @@ unsigned char render() {
         if(!me) continue;
 
         selected_char = SPRITES[me->char_type];
-
-        if(now % 5 == 0) {
-            cputs("x: ");
-            cputs_hex_value(me->path_x);
-            cputs(" y: ");
-            cputs_hex_value(me->path_y);
-            cputs(" i: ");
-            cputs_hex_value(i);
-            cputs(" hp: ");
-            cputs_hex_value(me->hitpoints);
-            cputs(" a: ");
-            cputs_hex_value(me->action_flags);
-            cputs(" c: ");
-            cputs_hex_value(me->char_type);
-            puts("");
-        }
 
         action_flags = me->action_flags;
 
@@ -410,6 +420,7 @@ unsigned char level_irq_handler(void) {
 
 unsigned char play_level (void) {
     unsigned char err;
+    char_state* meece;
 
     level_screen* screen = calloc(1, sizeof(level_screen));
 
@@ -427,18 +438,71 @@ unsigned char play_level (void) {
 
     state->guy = char_state_init(CHAR_TYPE_GUY);
 
-    state->screen_index = 0;
+    meece = char_state_init(CHAR_TYPE_MOOSE);
+    meece->path_x = 0;
+    meece->path_y = 0;
+    level_screen_add_character(screen, meece);
 
-    level_screen_add_character(screen, state->guy);
-    level_screen_add_character(screen, char_state_init(CHAR_TYPE_MOOSE));
+    meece = char_state_init(CHAR_TYPE_MOOSE);
+    meece->path_x = MAX_PATH_X;
+    meece->path_y = MAX_PATH_Y;
+    level_screen_add_character(screen, meece);
+
+    meece = char_state_init(CHAR_TYPE_MOOSE);
+    meece->path_x = 0;
+    meece->path_y = MAX_PATH_Y;
+    level_screen_add_character(screen, meece);
+
+    meece = char_state_init(CHAR_TYPE_MOOSE);
+    meece->path_x = MAX_PATH_X;
+    meece->path_y = 0;
+    level_screen_add_character(screen, meece);
+
+    meece = char_state_init(CHAR_TYPE_MOOSE);
+    meece->path_x = MAX_PATH_X / 2;
+    meece->path_y = MAX_PATH_Y / 2;
+    level_screen_add_character(screen, meece);
 
     gotoxy(0, 20);
 
     state->screens[0] = screen;
 
+    screen = calloc(1, sizeof(level_screen));
+
+    state->screen_index = 1;
+
+    level_screen_add_character(screen, state->guy);
+
+    meece = char_state_init(CHAR_TYPE_MOOSE);
+    meece->path_x = 0;
+    meece->path_y = 0;
+    level_screen_add_character(screen, meece);
+
+    meece = char_state_init(CHAR_TYPE_MOOSE);
+    meece->path_x = MAX_PATH_X;
+    meece->path_y = MAX_PATH_Y;
+    level_screen_add_character(screen, meece);
+
+    meece = char_state_init(CHAR_TYPE_MOOSE);
+    meece->path_x = 0;
+    meece->path_y = MAX_PATH_Y;
+    level_screen_add_character(screen, meece);
+
+    meece = char_state_init(CHAR_TYPE_MOOSE);
+    meece->path_x = MAX_PATH_X;
+    meece->path_y = 0;
+    level_screen_add_character(screen, meece);
+
+    meece = char_state_init(CHAR_TYPE_MOOSE);
+    meece->path_x = MAX_PATH_X / 2;
+    meece->path_y = MAX_PATH_Y / 2;
+    level_screen_add_character(screen, meece);
+
+    state->screens[1] = screen;
+
     setup_irq_handler(&level_irq_handler);
 
-    screen_init(false, true);
+    screen_init(true, true);
 
     while (true)
     {
