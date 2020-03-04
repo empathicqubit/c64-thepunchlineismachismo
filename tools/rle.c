@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
 
     for(; read_index < read_size; read_index++) {
         current = read_buffer[read_index];
-        if(last != current) {
+        if(last != current || count == 0xff) {
             write_buffer[write_index] = count;
             write_index++;
             write_buffer[write_index] = last;
