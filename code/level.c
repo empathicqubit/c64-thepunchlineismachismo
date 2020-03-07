@@ -1,16 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <stdbool.h>
+#include <c64.h>
+#include <joystick.h>
+#include <6502.h>
+#include <conio.h>
 #include "utils.h"
 #include "c64.h"
+#include "seq.h"
 #include "sprite.h"
 #include "sid.h"
 #include "../resources/sprites/canada.h"
 #include "char_state.h"
-#include <joystick.h>
-#include <6502.h>
-#include <conio.h>
 
 #define MAX_SCREEN_CHARACTERS 16
 #define MAX_SCREENS 16
@@ -23,6 +26,8 @@ void debug_marker() {}
 typedef struct level_screen level_screen;
 struct level_screen {
     char_state* characters[MAX_SCREEN_CHARACTERS];
+    unsigned char* bg_data;
+    unsigned int bg_length;
 };
 
 typedef struct level_state level_state;
@@ -151,6 +156,29 @@ unsigned char process_cpu_input(void) {
     return EXIT_SUCCESS;
 }
 
+unsigned char* level_screen_load_bg(unsigned char filename[], unsigned int* fullsize) {
+    return seq_load(filename, fullsize);
+}
+
+unsigned char level_screen_init_bg(unsigned char* bg) {
+    unsigned int fullsize, partialsize;
+    unsigned char bg_char;
+
+    partialsize = fullsize;
+    while((bg_char = bg[partialsize-1]) && bg_char < 0x20 || (bg_char >= 0x80 && bg_char <= 0x9f)) {
+        partialsize--;
+    }
+    partialsize--;
+
+    fwrite(bg, partialsize, 1, stdout);
+    // FIXME hack
+    *(unsigned char*)(SCREEN_START + XSIZE * YSIZE - 1) = *(unsigned char*)(SCREEN_START + XSIZE * YSIZE - 2);
+    COLOR_RAM[COLOR_RAM_SIZE - 1] = COLOR_RAM[COLOR_RAM_SIZE - 2];
+
+    return EXIT_SUCCESS;
+}
+
+
 unsigned char move_to_screen(unsigned char screen_idx, unsigned char guy_idx) {
     unsigned char err;
     level_screen* dest_screen = state->screens[screen_idx];
@@ -166,6 +194,10 @@ unsigned char move_to_screen(unsigned char screen_idx, unsigned char guy_idx) {
     state->screen_index = screen_idx;
 
     if(err = level_screen_add_character(dest_screen, state->guy)) {
+        return err;
+    }
+
+    if(err = level_screen_init_bg(dest_screen->bg_data)) {
         return err;
     }
 
@@ -418,13 +450,102 @@ unsigned char level_irq_handler(void) {
     return consume_raster_irq(&level_raster_irq);
 }
 
-unsigned char play_level (void) {
-    unsigned char err;
+unsigned char level_state_init(unsigned char num) {
+    unsigned char i;
     char_state* meece;
-
-    level_screen* screen = calloc(1, sizeof(level_screen));
+    level_screen** screens;
+    level_screen* screen;
 
     state = calloc(1, sizeof(level_state));
+
+    screens = state->screens;
+
+    // FIXME map screen?
+    if(num == 0) {
+        screen = calloc(1, sizeof(level_screen));
+
+        screen->bg_data = "froad1.ser";
+
+        state->guy = char_state_init(CHAR_TYPE_GUY);
+
+        meece = char_state_init(CHAR_TYPE_MOOSE);
+        meece->path_x = 0;
+        meece->path_y = 0;
+        level_screen_add_character(screen, meece);
+
+        meece = char_state_init(CHAR_TYPE_MOOSE);
+        meece->path_x = MAX_PATH_X;
+        meece->path_y = MAX_PATH_Y;
+        level_screen_add_character(screen, meece);
+
+        meece = char_state_init(CHAR_TYPE_MOOSE);
+        meece->path_x = 0;
+        meece->path_y = MAX_PATH_Y;
+        level_screen_add_character(screen, meece);
+
+        meece = char_state_init(CHAR_TYPE_MOOSE);
+        meece->path_x = MAX_PATH_X;
+        meece->path_y = 0;
+        level_screen_add_character(screen, meece);
+
+        meece = char_state_init(CHAR_TYPE_MOOSE);
+        meece->path_x = MAX_PATH_X / 2;
+        meece->path_y = MAX_PATH_Y / 2;
+        level_screen_add_character(screen, meece);
+
+        screens[0] = screen;
+
+        screen = calloc(1, sizeof(level_screen));
+
+        screen->bg_data = "froad2.ser";
+
+        level_screen_add_character(screen, state->guy);
+
+        meece = char_state_init(CHAR_TYPE_MOOSE);
+        meece->path_x = 0;
+        meece->path_y = 0;
+        level_screen_add_character(screen, meece);
+
+        meece = char_state_init(CHAR_TYPE_MOOSE);
+        meece->path_x = MAX_PATH_X;
+        meece->path_y = MAX_PATH_Y;
+        level_screen_add_character(screen, meece);
+
+        meece = char_state_init(CHAR_TYPE_MOOSE);
+        meece->path_x = 0;
+        meece->path_y = MAX_PATH_Y;
+        level_screen_add_character(screen, meece);
+
+        meece = char_state_init(CHAR_TYPE_MOOSE);
+        meece->path_x = MAX_PATH_X;
+        meece->path_y = 0;
+        level_screen_add_character(screen, meece);
+
+        meece = char_state_init(CHAR_TYPE_MOOSE);
+        meece->path_x = MAX_PATH_X / 2;
+        meece->path_y = MAX_PATH_Y / 2;
+        level_screen_add_character(screen, meece);
+
+        screens[1] = screen;
+
+        state->screen_index = 0;
+    }
+    else {
+        return EXIT_FAILURE;
+    }
+
+    for(i = 0; i < MAX_SCREENS; i++) {
+        screen = screens[i];
+        if(!(screen->bg_data = level_screen_load_bg(screens[i]->bg_data, &(screens[i]->bg_length)))) {
+            return EXIT_FAILURE;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+unsigned char play_level (void) {
+    unsigned char err;
 
     if(!(state->snz = snz_load("canada.snz", &err))) {
         printf("Sound load error: %x\n", err);
@@ -436,73 +557,22 @@ unsigned char play_level (void) {
         return EXIT_FAILURE;
     }
 
-    state->guy = char_state_init(CHAR_TYPE_GUY);
+    if(err = level_state_init(0)) {
+        printf("Level state init error: %x\n", err);
+        return EXIT_FAILURE;
+    }
 
-    meece = char_state_init(CHAR_TYPE_MOOSE);
-    meece->path_x = 0;
-    meece->path_y = 0;
-    level_screen_add_character(screen, meece);
-
-    meece = char_state_init(CHAR_TYPE_MOOSE);
-    meece->path_x = MAX_PATH_X;
-    meece->path_y = MAX_PATH_Y;
-    level_screen_add_character(screen, meece);
-
-    meece = char_state_init(CHAR_TYPE_MOOSE);
-    meece->path_x = 0;
-    meece->path_y = MAX_PATH_Y;
-    level_screen_add_character(screen, meece);
-
-    meece = char_state_init(CHAR_TYPE_MOOSE);
-    meece->path_x = MAX_PATH_X;
-    meece->path_y = 0;
-    level_screen_add_character(screen, meece);
-
-    meece = char_state_init(CHAR_TYPE_MOOSE);
-    meece->path_x = MAX_PATH_X / 2;
-    meece->path_y = MAX_PATH_Y / 2;
-    level_screen_add_character(screen, meece);
-
-    gotoxy(0, 20);
-
-    state->screens[0] = screen;
-
-    screen = calloc(1, sizeof(level_screen));
-
-    state->screen_index = 1;
-
-    level_screen_add_character(screen, state->guy);
-
-    meece = char_state_init(CHAR_TYPE_MOOSE);
-    meece->path_x = 0;
-    meece->path_y = 0;
-    level_screen_add_character(screen, meece);
-
-    meece = char_state_init(CHAR_TYPE_MOOSE);
-    meece->path_x = MAX_PATH_X;
-    meece->path_y = MAX_PATH_Y;
-    level_screen_add_character(screen, meece);
-
-    meece = char_state_init(CHAR_TYPE_MOOSE);
-    meece->path_x = 0;
-    meece->path_y = MAX_PATH_Y;
-    level_screen_add_character(screen, meece);
-
-    meece = char_state_init(CHAR_TYPE_MOOSE);
-    meece->path_x = MAX_PATH_X;
-    meece->path_y = 0;
-    level_screen_add_character(screen, meece);
-
-    meece = char_state_init(CHAR_TYPE_MOOSE);
-    meece->path_x = MAX_PATH_X / 2;
-    meece->path_y = MAX_PATH_Y / 2;
-    level_screen_add_character(screen, meece);
-
-    state->screens[1] = screen;
+    if(err = level_screen_init_bg(state->screens[state->screen_index]->bg_data)) {
+        printf("Level background init error: %x\n", err);
+        return EXIT_FAILURE;
+    }
 
     setup_irq_handler(&level_irq_handler);
 
     screen_init(true, true);
+
+    bgcolor(COLOR_LIGHTBLUE);
+    bordercolor(COLOR_GREEN);
 
     while (true)
     {

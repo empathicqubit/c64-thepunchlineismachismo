@@ -31,7 +31,9 @@ unsigned char* seq_load (char filename[], unsigned int* size) {
     return NULL;
   }
 
-  data = malloc(unpacked_size);
+  if(!(data = malloc(unpacked_size))) {
+    return NULL;
+  }
 
   data[0] = check;
 

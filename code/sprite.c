@@ -93,6 +93,8 @@ unsigned char spritesheet_load(char filename[]) {
     *(unsigned char *)VIC_SPR_MCOLOR0 = spd_data->multicolor_0;
     *(unsigned char *)VIC_SPR_MCOLOR1 = spd_data->multicolor_1;
 
+    fclose(fp);
+
     return EXIT_SUCCESS;
 }
 

@@ -100,8 +100,12 @@ void cputs_hex_value(int value) {
 int get_filesize(char filename[]) {
     int total;
     int chunk;
-    unsigned char* trash = malloc(256);
+    unsigned char* trash;
     FILE* fp;
+
+    if(!(trash = malloc(256))) {
+        return -1;
+    }
 
     fp = fopen(filename, "rb");
 
@@ -144,7 +148,9 @@ unsigned char consume_raster_irq(void (*raster_handler)(void)) {
 
 unsigned char setup_irq_handler(unsigned char (*handler)(void)) {
     if(!irq_stack) {
-        irq_stack = malloc(IRQ_STACK_SIZE);
+        if(!(irq_stack = malloc(IRQ_STACK_SIZE))) {
+            return EXIT_FAILURE;
+        }
     }
 
     set_irq(handler, irq_stack, IRQ_STACK_SIZE);

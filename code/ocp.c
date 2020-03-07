@@ -32,12 +32,12 @@ unsigned char ocp_load (char filename[]) {
   *(unsigned char *)VIC_VIDEO_ADR |= ((BITMAP_START % VIC_BANK_SIZE) / VIC_VIDEO_ADR_CHAR_DIVISOR) << 1;
 
   if(
-      (err = rle_unpack(rle, BITMAP_START, 8000))
+      (err = rle_unpack(rle, BITMAP_START, SCREEN_BITMAP_SIZE))
       || (err = rle_unpack(rle, SCREEN_START, SCREEN_BYTES))
       || (err = rle_unpack(rle, VIC_BORDERCOLOR, 1))
       || (err = rle_unpack(rle, VIC_BG_COLOR0, 1))
       || (err = rle_unpack(rle, COLOR_RAM, 14)) // This is trash
-      || (err = rle_unpack(rle, COLOR_RAM, 1000))
+      || (err = rle_unpack(rle, COLOR_RAM, COLOR_RAM_SIZE))
   ) {
       rle_close(rle);
       return err;

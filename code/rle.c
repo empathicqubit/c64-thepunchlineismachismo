@@ -45,7 +45,9 @@ rle_cursor* rle_open(unsigned char* filename, unsigned int* unpacked_size) {
     }
     fclose(fp);
 
-    data = malloc(4 + count * sizeof(rle_pair));
+    if(!(data = malloc(4 + count * sizeof(rle_pair)))) {
+        return NULL;
+    }
 
     data->count = count;
     data->unpacked_size = 0;

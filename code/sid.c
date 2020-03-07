@@ -77,13 +77,17 @@ unsigned char* snz_load(char filename[], unsigned char* error) {
 
     fp = fopen(filename, "rb");
 
-    snz = malloc(size);
+    if(!(snz = malloc(size))) {
+        return NULL;
+    }
 
     if(!fread(snz, 1, size, fp)) {
         fclose(fp);
         *error = 2;
         return NULL;
     }
+
+    fclose(fp);
 
     return snz;
 }

@@ -14,7 +14,7 @@
 #include "level.h"
 #include "seq.h"
 
-//#define DEBUG 1
+#define DEBUG 1
 
 extern const unsigned char r_text_loading[];
 extern const unsigned char r_text_loading2[];

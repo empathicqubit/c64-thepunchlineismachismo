@@ -10,6 +10,7 @@
        "name": "CC65 Vice Launch",
        "buildCwd": "${workspaceFolder}",
        "buildCommand": "make OPTIONS=mapfile,labelfile,debugfile",
+       "program": "${workspaceFolder}/build/machismo.d81",
        "stopOnEntry": true,
        "viceArgs": [
            "-model", "ntsc"
