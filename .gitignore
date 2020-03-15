@@ -17,6 +17,7 @@ docker/
 
 # Resources
 *.sex
+*.oci
 *.ocx
 *.sid
 *.snd

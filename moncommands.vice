@@ -1,2 +1,3 @@
 load_labels "build/machismo.lbl"
 bk ._main
+bk ._screen_init

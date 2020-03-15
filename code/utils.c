@@ -18,7 +18,23 @@ void pal_system(void) {
     updatepalntsc();
 }
 
-/* Wait a number of milliseconds
+/** Disable the IO page
+ */
+void __fastcall__ hide_io(void) {
+    *(unsigned char *)CIA1_CRA &= ~CIA1_CR_START_STOP;
+
+    *(unsigned char *)CPU_PORT &= ~CPU_PORT_BANK_IO_VISIBLE_CHARACTER_ROM_INVISIBLE;
+}
+
+/** Enable the IO page
+ */
+void __fastcall__ show_io(void) {
+    *(unsigned char *)CPU_PORT |= CPU_PORT_BANK_IO_VISIBLE_CHARACTER_ROM_INVISIBLE;
+
+    *(unsigned char *)CIA1_CRA |= CIA1_CR_START_STOP;
+}
+
+/** Wait a number of milliseconds
  * @param duration - Milliseconds to wait
  */
 void wait (unsigned int duration) {
@@ -27,19 +43,13 @@ void wait (unsigned int duration) {
     while(clock() < end);
 }
 
-/* Copies character ROM to RAM.
+/** Copies character ROM to RAM.
+ * @param use_graphics_charset - Use fancy graphics chars with no lowercase
  */
-void character_init(void) {
-    *(unsigned char *)CIA1_CRA &= ~CIA1_CR_START_STOP;
-
-    // Inverse - make character ROM visible
-    *(unsigned char *)CPU_PORT &= ~CPU_PORT_IO_VISIBLE_CHARACTER_ROM_INVISIBLE;
-
-    memcpy(CHARACTER_START, CHARACTER_ROM, CHARACTER_ROM_SIZE);
-
-    *(unsigned char *)CPU_PORT |= CPU_PORT_IO_VISIBLE_CHARACTER_ROM_INVISIBLE;
-
-    *(unsigned char *)CIA1_CRA |= CIA1_CR_START_STOP;
+void character_init(bool use_graphics_charset) {
+    hide_io();
+    memcpy(CHARACTER_START, CHARACTER_ROM + (use_graphics_charset * VIC_VIDEO_ADR_CHAR_DIVISOR), CHARACTER_ROM_SIZE);
+    show_io();
 }
 
 static unsigned char _utils_lfn = 0x1f;
@@ -52,10 +62,9 @@ unsigned char utils_get_unused_lfn(void) {
 }
 
 /** Reset the screen to VIC bank #3
- * @param use_graphics_charset - Use fancy graphics chars with no lowercase
  * @param clear - Clear the screen before switching to it
  */
-void __fastcall__ screen_init (bool use_graphics_charset, bool clear) {
+void __fastcall__ screen_init (bool clear) {
     unsigned char screen_ptr = ((SCREEN_START % VIC_BANK_SIZE) / VIC_VIDEO_ADR_SCREEN_DIVISOR) << 4;
 
     // Update kernal
@@ -70,7 +79,7 @@ void __fastcall__ screen_init (bool use_graphics_charset, bool clear) {
 
     // Switch to character memory
     *(unsigned char *)VIC_VIDEO_ADR &= ~(VIC_VIDEO_ADR_CHAR_PTR_MASK);
-    *(unsigned char *)VIC_VIDEO_ADR |= (((CHARACTER_START + (use_graphics_charset * VIC_VIDEO_ADR_CHAR_DIVISOR)) % VIC_BANK_SIZE) / VIC_VIDEO_ADR_CHAR_DIVISOR) << 1;
+    *(unsigned char *)VIC_VIDEO_ADR |= ((CHARACTER_START % VIC_BANK_SIZE) / VIC_VIDEO_ADR_CHAR_DIVISOR) << 1;
 
     // Fix HLINE IRQ
     *(unsigned char*)VIC_HLINE = SCREEN_SPRITE_BORDER_Y_END;
@@ -82,6 +91,7 @@ void __fastcall__ screen_init (bool use_graphics_charset, bool clear) {
 
     if(clear) {
         clrscr();
+
         bgcolor(COLOR_BLACK);
     }
 }

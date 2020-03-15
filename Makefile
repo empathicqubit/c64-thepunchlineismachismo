@@ -3,15 +3,16 @@ SHELL=busybox
 
 DISKIMAGE=machismo.d64
 SID_HIGHBYTE=B0
-BITMAP_START=C000
-SCREEN_START=E000
-CHARACTER_START=F000
+BITMAP_START=E000
+SPRITE_START=C400
+SCREEN_START=C000
+CHARACTER_START=D800
 MODEL?=ntsc
 
 CC=cl65
 
 CFLAGS=-Osr -O -t c64 -C linker.cfg
-DFLAGS?=-Wa "--cpu" -Wa "6502X" -Wa "-DSID_START=\$$$(SID_HIGHBYTE)00" -Wc "-DSID_START=0x$(SID_HIGHBYTE)00"  -Wc "-DSID_SIZE=$$sidsize" -Wc "-DBITMAP_START=0x$(BITMAP_START)" -Wc "-DSCREEN_START=0x$(SCREEN_START)" -Wc "-DCHARACTER_START=0x$(CHARACTER_START)"
+DFLAGS?=-Wa "--cpu" -Wa "6502X" -Wa "-DSID_START=\$$$(SID_HIGHBYTE)00" -Wc "-DSID_START=0x$(SID_HIGHBYTE)00"  -Wc "-DSID_SIZE=$$sidsize" -Wc "-DBITMAP_START=0x$(BITMAP_START)" -Wc "-DSCREEN_START=0x$(SCREEN_START)" -Wc "-DCHARACTER_START=0x$(CHARACTER_START)" -Wc "-DSPRITE_START=0x$(SPRITE_START)"
 DBGFLAGS?=-g -Wl "-Lnbuild/machismo.lbl" -vm -Wl "--mapfile,build/machismo.map" -Wl "--dbgfile,build/machismo.dbg"
 
 CCFLAGS=$(CFLAGS) $(DFLAGS) $(DBGFLAGS)
@@ -47,6 +48,7 @@ clean:
 		find code -iname '*.o' -exec rm -rf {} \;
 		rm -rf $(music)
 		rm -rf $(bitmaps)
+		rm -rf *.oci
 		rm -rf resources/audio/*.snz
 		rm -rf $(sounds)
 		rm -rf $(seq)
@@ -125,9 +127,6 @@ resources/audio/canada.snz: $(sounds)
 		gt2reloc "$<" "$@.bin" $(GT2RELOC_OPTS) -G424
 		mv "$@.bin" "$@"
 
-build/rle: tools/rle.c build/.sentinel
-		gcc -o "$@" "$<"
-
 build/exomizer: tools/exo/src/exomizer build/.sentinel
 		cp "$<" "$@"
 
@@ -135,12 +134,17 @@ tools/exo/src/exomizer: tools/exo/src/Makefile
 		cd "$(dir $<)"
 		make -j$$(nproc)
 
-%.ocx: %.ocp build/exomizer
+%.oci: %.ocp
+		dd "if=$<" bs=1 skip=8002 count=2016 > "$@"
+		dd "if=/dev/zero" bs=$$((0x$(BITMAP_START) - 0x$(SCREEN_START) - 2016)) count=1 >> "$@"
+		dd "if=$<" skip=2 bs=1 count=8000 >> "$@"
+
+%.ocx: %.oci build/exomizer
 		# FIXME Must reorder file before writing
-		build/exomizer level -o "$@" "$<,0xBC00"
+		build/exomizer level -c "$<@0" -o "$@"
 
 %.sex: %.seq build/exomizer
-		build/exomizer level -o "$@" "$<,0x$(SCREEN_START)"
+		build/exomizer level -c "$<@0" -o "$@"
 
 ./docker: ./docker/Dockerfile ./docker/cert.pem ./docker/cc65.tar.gz ./docker/goattracker.zip
 
@@ -157,7 +161,7 @@ tools/exo/src/exomizer: tools/exo/src/Makefile
 		curl -L 'http://csdb.dk/getinternalfile.php/180091/GoatTracker_2.75.zip' > "$@" || rm "$@"
 
 # A single pattern rule will create all appropriate folders as required
-.PRECIOUS: %/.sentinel # otherwise make (annoyingly) deletes it
+.PRECIOUS: %/.sentinel %.oci
 %/.sentinel:
 		mkdir -p ${@D}
 		touch $@

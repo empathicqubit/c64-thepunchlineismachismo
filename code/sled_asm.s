@@ -67,7 +67,6 @@ STA bounce
 STX bounce+1
 STY bounce+2
 
-LDX #$00
 LDA #$01
 JSR _screen_init
 

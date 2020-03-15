@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include "c64.h"
 
+#define SPD_PADDING 55
+
 /* Move a sprite that is already loaded
  * @param sprite_slot - Which of the 8 sprite slots on the C64.
  * @param x - X position
@@ -48,6 +50,7 @@ struct spd_sprite {
 typedef struct spd_sprite spd_sprite;
 
 struct spd {
+    unsigned char padding[SPD_PADDING];
     unsigned char magic[3];
     unsigned char version;
     unsigned char sprite_count;
@@ -59,8 +62,7 @@ struct spd {
 };
 typedef struct spd spd;
 
-const unsigned char* SPRITE_AREA = SCREEN_START + VIC_VIDEO_ADR_SCREEN_DIVISOR + VIC_SPR_SIZE - 9; // 9 = header size
-const unsigned char SPRITE_MAX = 47;
+const unsigned char SPRITE_MAX = 80;
 
 /* Load a sprite sheet in SpritePad format
  * @param filename - The filename on disk
@@ -74,8 +76,8 @@ unsigned char spritesheet_load(unsigned char* filename) {
     fp = fopen(filename, "rb");
 
     // Used to write this directly to the memory area, but we can't read it if we do.
-    if(!(header = malloc(9))
-        || !fread(header, 9, 1, fp)) {
+    if(!(header = calloc(1, VIC_SPR_SIZE))
+        || !fread(header + SPD_PADDING, VIC_SPR_SIZE - SPD_PADDING, 1, fp)) {
         fclose(fp);
         return EXIT_FAILURE;
     }
@@ -88,9 +90,9 @@ unsigned char spritesheet_load(unsigned char* filename) {
         return EXIT_FAILURE;
     }
 
-    memcpy(SPRITE_AREA, header, 9);
+    memcpy(SPRITE_START, header, VIC_SPR_SIZE);
 
-    if(!fread(SPRITE_AREA + 9, VIC_SPR_SIZE, spd_data->sprite_count + 1, fp)) {
+    if(!fread(SPRITE_START + VIC_SPR_SIZE, VIC_SPR_SIZE, spd_data->sprite_count + 1, fp)) {
         fclose(fp);
         return EXIT_FAILURE;
     }
@@ -115,7 +117,7 @@ const unsigned char SPD_SPRITE_COLOR_VALUE_MASK = 0x0F;
 unsigned char spritesheet_get_index(unsigned char sprite_slot) {
     unsigned char* spr_pointers;
     unsigned char spr_pointer;
-    spd* spd_data = (spd*)SPRITE_AREA;
+    spd* spd_data = (spd*)SPRITE_START;
 
     if(sprite_slot > VIC_SPR_COUNT-1) return -1;
 
@@ -133,7 +135,7 @@ unsigned char spritesheet_get_index(unsigned char sprite_slot) {
  */
 unsigned char spritesheet_set_image(unsigned char sprite_slot, unsigned char sheet_idx) {
     unsigned char* spr_pointers;
-    spd* spd_data = (spd*)SPRITE_AREA;
+    spd* spd_data = (spd*)SPRITE_START;
     spd_sprite* spd_sprite;
     char hi_mask;
 

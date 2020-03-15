@@ -4,19 +4,24 @@
 #include <stdlib.h>
 #include "exo.h"
 #include "c64.h"
+#include "utils.h"
 
 unsigned char ocp_load (char filename[]) {
-    unsigned int seek, unpacked_end;
+    unsigned int seek, size;
+    unsigned char* color_temp;
     unsigned char err;
 
-    if(err = exo_open(filename, &unpacked_end)) {
+    if(err = exo_open(filename, &size)) {
         return EXIT_FAILURE;
     }
 
-    // FIXME Switch off/on I/O bank. See CHAR ROM code in utils
-    if(err = exo_unpack()) {
+    if(err = exo_unpack(SCREEN_START)) {
         exo_close();
         return err;
+    }
+
+    if(!(color_temp = malloc(COLOR_RAM_SIZE))) {
+        return EXIT_FAILURE;
     }
 
     *(unsigned char *)VIC_CTRL1 |= VIC_CTRL1_BITMAP_ON;
@@ -25,19 +30,17 @@ unsigned char ocp_load (char filename[]) {
     *(unsigned char *)VIC_VIDEO_ADR &= ~(VIC_VIDEO_ADR_CHAR_PTR_MASK);
     *(unsigned char *)VIC_VIDEO_ADR |= ((BITMAP_START % VIC_BANK_SIZE) / VIC_VIDEO_ADR_CHAR_DIVISOR) << 1;
 
-    // FIXME Copy Color RAM to correct place after write
-    /*
-    seek = 0;
-    memcpy(BITMAP_START, data + seek, SCREEN_BITMAP_SIZE);
-    seek += SCREEN_BITMAP_SIZE;
-    memcpy(SCREEN_START, data + seek, SCREEN_BYTES);
-    seek += SCREEN_BYTES;
-    memcpy(VIC_BORDERCOLOR, data + seek, 1);
-    seek += 1 + 14; // 14 bytes of trash
-    memcpy(COLOR_RAM, data + seek, COLOR_RAM_SIZE);
+    seek = SCREEN_BYTES;
+    *(unsigned char *)VIC_BORDERCOLOR = ((unsigned char*)SCREEN_START)[seek];
+    seek += 1;
+    *(unsigned char *)VIC_BG_COLOR0 = ((unsigned char*)SCREEN_START)[seek];
+    seek += 15;
 
-    free(data);
-    */
+    memcpy(color_temp, SCREEN_START + seek, COLOR_RAM_SIZE);
+
+    memcpy(COLOR_RAM, color_temp, COLOR_RAM_SIZE);
+
+    free(color_temp);
 
     return EXIT_SUCCESS;
 }

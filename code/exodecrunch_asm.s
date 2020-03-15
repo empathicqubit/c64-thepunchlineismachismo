@@ -1,3 +1,5 @@
+; modified by Krill/Plush to implement forward decrunching and integrate into loader
+
 ;
 ; Copyright (c) 2002 - 2018 Magnus Lind.
 ;
@@ -24,39 +26,11 @@
 ;   specific prior written permission.
 ;
 ; -------------------------------------------------------------------
-; THIS CODE HAS BEEN ALTERED
-; -------------------------------------------------------------------
 ; The decruncher jsr:s to the get_crunched_byte address when it wants to
 ; read a crunched byte into A. This subroutine has to preserve X and Y
 ; register and must not modify the state of the carry nor the overflow flag.
 ; -------------------------------------------------------------------
-.segment "CODE"
-.import _get_crunched_byte, incsp3, ldax0sp, pusha, pushax
-.importzp sp
-get_crunched_byte:
-    php
-
-    ; Save XY
-    txa
-    pha
-    tya
-    pha
-
-    jsr _get_crunched_byte
-    sta get_crunched_byte_temp
-
-    ; Restore XY
-    pla
-    tay
-    pla
-    tax
-
-    ; Restore A
-    lda get_crunched_byte_temp
-
-    plp
-
-    rts
+;.import get_crunched_byte
 ; -------------------------------------------------------------------
 ; this function is the heart of the decruncher.
 ; It initializes the decruncher zeropage locations and precalculates the
@@ -64,7 +38,9 @@ get_crunched_byte:
 ; This function will not change the interrupt status bit and it will not
 ; modify the memory configuration.
 ; -------------------------------------------------------------------
+.segment "CODE"
 .export _decrunch
+.import _get_crunched_byte, _exo_loadaddroffs
 
 ; -------------------------------------------------------------------
 ; Controls if the shared get_bits routines should be inlined or not.
@@ -80,15 +56,10 @@ get_crunched_byte:
 ; shorter and slightly faster code.
 ;MAX_SEQUENCE_LENGTH_256 = 1
 ; -------------------------------------------------------------------
-; if the sequence length 3 has its own offset table then the following
-; line can be uncommented for in some situations slightly better
-; compression at the cost of a larger decrunch table.
-;EXTRA_TABLE_ENTRY_FOR_LENGTH_THREE = 1
-; -------------------------------------------------------------------
 ; zero page addresses used
 ; -------------------------------------------------------------------
-zp_len_lo = $a7
-zp_len_hi = $a8
+zp_len_lo =  $a7
+zp_len_hi =  $a8
 
 zp_src_lo  = $ae
 zp_src_hi  = zp_src_lo + 1
@@ -96,18 +67,24 @@ zp_src_hi  = zp_src_lo + 1
 zp_bits_hi = $fc
 
 zp_bitbuf  = $fd
-zp_dest_lo = zp_bitbuf + 1      ; dest addr lo
-zp_dest_hi = zp_bitbuf + 2      ; dest addr hi
-
-.IFDEF EXTRA_TABLE_ENTRY_FOR_LENGTH_THREE
-encoded_entries = 68
-.ELSE
-encoded_entries = 52
-.ENDIF
+.ifndef MEM_DECOMP_TO_API
+zp_dest_lo = zp_bitbuf + 1; zp_bitbuf + 1      ; dest addr lo
+zp_dest_hi = zp_bitbuf + 2; zp_bitbuf + 2      ; dest addr hi
+.else
+zp_dest_lo = decdestlo; zp_bitbuf + 1      ; dest addr lo
+zp_dest_hi = decdesthi; zp_bitbuf + 2      ; dest addr hi
+.endif
 
 tabl_bi = decrunch_table
-tabl_lo = decrunch_table + encoded_entries
-tabl_hi = decrunch_table + encoded_entries * 2
+tabl_lo = decrunch_table + 52
+tabl_hi = decrunch_table + 104
+
+.macro SETDECOMPGETBYTE
+        sta decompgetbyte + 1
+        sty decompgetbyte + 2
+.endmacro
+
+decompress = _decrunch
 
         ;; refill bits is always inlined
 .MACRO mac_refill_bits
@@ -161,7 +138,39 @@ gb_skip:
 gb_get_hi:
         sec
         sta zp_bits_hi
-        jmp get_crunched_byte
+get_crunched_byte:
+        php
+
+        ; Save XY
+        txa
+        pha
+        tya
+        pha
+
+        lda #%11111000 ; Reset bank bits
+        and $1
+        ora #$06 ; IO + LO RAM
+        sta $1
+
+        jsr _get_crunched_byte
+        sta get_crunched_byte_temp
+
+        lda #$06
+        eor $1 ; #$000 = ALL RAM visible, no IO
+        sta $1
+
+        ; Restore XY
+        pla
+        tay
+        pla
+        tax
+
+        ; Restore A
+        lda get_crunched_byte_temp
+
+        plp
+
+        rts
 .ENDIF
 ; -------------------------------------------------------------------
 ; no code below this comment has to be modified in order to generate
@@ -179,14 +188,33 @@ _decrunch:
 ; -------------------------------------------------------------------
 ; init zeropage, x and y regs. (12 bytes)
 ;
-        cld
         ldy #0
+.ifndef MEM_DECOMP_TO_API
         ldx #3
 init_zp:
         jsr get_crunched_byte
         sta zp_bitbuf - 1,x
         dex
         bne init_zp
+.else
+        jsr get_crunched_byte
+storedadrh:
+        sta zp_dest_hi
+        jsr get_crunched_byte
+storedadrl:
+        sta zp_dest_lo
+        jsr get_crunched_byte
+        sta zp_bitbuf
+.endif
+
+        clc
+        lda _exo_loadaddroffs
+        adc zp_dest_lo
+        sta zp_dest_lo
+        lda _exo_loadaddroffs + 1
+        adc zp_dest_hi
+        sta zp_dest_hi
+
 ; -------------------------------------------------------------------
 ; calculate tables (62 bytes) + get_bits macro
 ; x and y must be #0 when entering
@@ -234,7 +262,7 @@ no_fixup_lohi:
         txa
 ; -------------------------------------------------------------------
         iny
-        cpy #encoded_entries
+        cpy #52
         bne table_gen
 ; -------------------------------------------------------------------
 ; prepare for main decruncher
@@ -245,6 +273,7 @@ no_fixup_lohi:
 ; copy one literal byte to destination (11 bytes)
 ;
 literal_start1:
+.IFNDEF FORWARD_DECRUNCHING
         tya
         bne no_hi_decr
         dec zp_dest_hi
@@ -252,6 +281,14 @@ no_hi_decr:
         dey
         jsr get_crunched_byte
         sta (zp_dest_lo),y
+.ELSE
+        jsr get_crunched_byte
+        sta (zp_dest_lo),y
+        iny
+        bne no_hi_incr
+        inc zp_dest_hi
+no_hi_incr:
+.ENDIF
 ; -------------------------------------------------------------------
 ; fetch sequence length index (15 bytes)
 ; x must be #0 when entering and contains the length index + 1
@@ -303,13 +340,9 @@ skip_jmp:
         tax
 .ENDIF
         lda #$e1
-.IFDEF EXTRA_TABLE_ENTRY_FOR_LENGTH_THREE
-        cpx #$04
-.ELSE
         cpx #$03
-.ENDIF
         bcs gbnc2_next
-        lda tabl_bit - 1,x
+        lda tabl_bit,x
 gbnc2_next:
         asl zp_bitbuf
         bne gbnc2_ok
@@ -329,6 +362,7 @@ gbnc2_ok:
         lda #0
         sta zp_bits_hi
 .ENDIF
+.IFNDEF FORWARD_DECRUNCHING
         lda tabl_bi,x
         mac_get_bits
         adc tabl_lo,x
@@ -337,15 +371,28 @@ gbnc2_ok:
         adc tabl_hi,x
         adc zp_dest_hi
         sta zp_src_hi
+.ELSE
+        lda tabl_bi,x
+        mac_get_bits
+        clc
+        adc tabl_lo,x
+        eor #$ff
+        sta zp_src_lo
+        lda zp_bits_hi
+        adc tabl_hi,x
+        eor #$ff
+        adc zp_dest_hi
+        sta zp_src_hi
+.ENDIF
 ; -------------------------------------------------------------------
 ; prepare for copy loop (2 bytes)
 ;
-pre_copy:
         ldx zp_len_lo
 ; -------------------------------------------------------------------
 ; main copy loop (30 bytes)
 ;
 copy_next:
+.IFNDEF FORWARD_DECRUNCHING
         tya
         bne copy_skip_hi
         dec zp_dest_hi
@@ -358,6 +405,19 @@ copy_skip_hi:
         lda (zp_src_lo),y
 literal_byte_gotten:
         sta (zp_dest_lo),y
+.ELSE
+.IFNDEF LITERAL_SEQUENCES_NOT_USED
+        bcc get_literal_byte
+.ENDIF
+        lda (zp_src_lo),y
+literal_byte_gotten:
+        sta (zp_dest_lo),y
+        iny
+        bne copy_skip_hi
+        inc zp_dest_hi
+        inc zp_src_hi
+copy_skip_hi:
+.ENDIF
         dex
         bne copy_next
 .IFNDEF MAX_SEQUENCE_LENGTH_256
@@ -381,7 +441,11 @@ copy_next_hi:
 .IFNDEF LITERAL_SEQUENCES_NOT_USED
 get_literal_byte:
         jsr get_crunched_byte
+.IFNDEF FORWARD_DECRUNCHING
         bcs literal_byte_gotten
+.ELSE
+        bcc literal_byte_gotten
+.ENDIF
 .ENDIF
 ; -------------------------------------------------------------------
 ; exit or literal sequence handling (16(12) bytes)
@@ -395,46 +459,40 @@ exit_or_lit_seq:
 .ENDIF
         jsr get_crunched_byte
         tax
+.IFNDEF FORWARD_DECRUNCHING
         bcs copy_next
+.ELSE
+        clc
+        bcc copy_next
+.ENDIF
 decr_exit:
 .ENDIF
+        lda #%11111000 ; Reset bank bits
+        and $1
+        ora #$06 ; Reveal Kernal+IO
+        sta $1
         rts
 
 .segment "DATA"
-
-get_crunched_byte_temp: .byte $00
-
-.IFDEF EXTRA_TABLE_ENTRY_FOR_LENGTH_THREE
+get_crunched_byte_temp:
+        .byte 0
 ; -------------------------------------------------------------------
-; the static stable used for bits+offset for lengths 1, 2 and 3 (3 bytes)
-; bits 2, 4, 4 and offsets 64, 48, 32 corresponding to
-; %10010000, %11100011, %11100010
+; the static stable used for bits+offset for lengths 3, 1 and 2 (3 bytes)
+; bits 4, 2, 4 and offsets 16, 48, 32
 tabl_bit:
-        .BYTE $90, $e3, $e2
-.ELSE
-; -------------------------------------------------------------------
-; the static stable used for bits+offset for lengths 1 and 2 (2 bytes)
-; bits 2, 4 and offsets 48, 32 corresponding to %10001100, %11100010
-tabl_bit:
-        .BYTE $8c, $e2
-.ENDIF
+        .BYTE %11100001, %10001100, %11100010
 ; -------------------------------------------------------------------
 ; end of decruncher
 ; -------------------------------------------------------------------
 
 ; -------------------------------------------------------------------
-; this 156 (204) byte table area may be relocated. It may also be
-; clobbered by other data between decrunches.
+; this 156 byte table area may be relocated. It may also be clobbered
+; by other data between decrunches.
 ; -------------------------------------------------------------------
 decrunch_table:
         .byte 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
         .byte 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
         .byte 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-.IFDEF EXTRA_TABLE_ENTRY_FOR_LENGTH_THREE
-        .byte 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-        .byte 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-        .byte 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-.ENDIF
         .byte 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
         .byte 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
         .byte 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0

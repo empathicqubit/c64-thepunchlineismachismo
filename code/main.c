@@ -31,28 +31,15 @@ unsigned char main_irq_handler(void) {
 #if !DEBUG
 unsigned char intro_screen() {
     unsigned char err, joyval;
-    unsigned char* data;
     unsigned int data_size;
+    unsigned char* data;
 
-    screen_init(true, true);
-
-    if(err = seq_load("newscreen.sex", &data_size)) {
-        return err;
-    }
-
-    while(1);
-
-    gotoxy(0, 0);
-
-    if(!fwrite(SCREEN_START, data_size, 1, stdout)) {
-        printf("Text load error\n");
-        return EXIT_FAILURE;
-    }
+    screen_init(true);
 
     puts(r_text_loading);
 
     if(err = sid_load("intro.sid")) {
-        printf("SID load error: %x\n", err);
+        printf("sid load error: %x\n", err);
         return EXIT_FAILURE;
     }
 
@@ -61,7 +48,7 @@ unsigned char intro_screen() {
     puts(r_text_loading3);
 
     if(err = ocp_load("intro.ocx")) {
-        printf("Bitmap load error: %x\n", err);
+        printf("bitmap load error: %x\n", err);
         return EXIT_FAILURE;
     }
 
@@ -85,7 +72,7 @@ unsigned char intro_screen() {
 unsigned char main (void) {
     unsigned char err;
 
-    screen_init(false, true);
+    screen_init(true);
 
     pal_system(); // Reset the system's PAL flag as it could be garbage in various cases.
 
@@ -95,29 +82,29 @@ unsigned char main (void) {
 
     puts(r_text_loading2);
 
-    character_init();
+    character_init(true);
 
     puts(r_text_loading3);
 
 #if !DEBUG
     if(err = intro_screen()) {
-        screen_init(false, false);
+        screen_init(false);
         while(1);
     }
 #endif
 
     if(err = spritesheet_load("canada.spd")) {
-        printf("Sprite load error: %x\n", err);
+        printf("sprite load error: %x\n", err);
         while(1);
     }
 
     if(err = play_level()) {
-        printf("Level error: %x\n", err);
-        screen_init(false, false);
+        printf("level error: %x\n", err);
+        screen_init(false);
         while(1);
     }
 
-    screen_init(true, true);
+    screen_init(true);
 
     return EXIT_SUCCESS;
 }

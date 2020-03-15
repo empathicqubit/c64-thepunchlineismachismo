@@ -156,7 +156,7 @@ unsigned char process_cpu_input(void) {
     return EXIT_SUCCESS;
 }
 
-unsigned char level_screen_load_bg(unsigned char* filename, unsigned int* fullsize) {
+unsigned char* level_screen_load_bg(unsigned char* filename, unsigned int* fullsize) {
     return seq_load(filename, fullsize);
 }
 
@@ -453,7 +453,7 @@ unsigned char level_irq_handler(void) {
 }
 
 unsigned char level_state_init(unsigned char num) {
-    unsigned char i, err;
+    unsigned char i;
     unsigned char* bg_data;
     char_state* meece;
     level_screen** screens;
@@ -543,8 +543,8 @@ unsigned char level_state_init(unsigned char num) {
             break;
         }
 
-        if(err = level_screen_load_bg(screen->bg_data, &(screen->bg_length))) {
-            return err;
+        if(!(screen->bg_data = level_screen_load_bg(screen->bg_data, &(screen->bg_length)))) {
+            return EXIT_FAILURE;
         }
 
         bg_data = malloc(screen->bg_length);
@@ -581,7 +581,7 @@ unsigned char play_level (void) {
 
     setup_irq_handler(&level_irq_handler);
 
-    screen_init(true, true);
+    screen_init(true);
 
     bgcolor(COLOR_LIGHTBLUE);
     bordercolor(COLOR_GREEN);

@@ -9,8 +9,15 @@
 // Zero page, Commodore stuff
 
 #define CPU_PORT                                    0x01
-#define CPU_PORT_BASIC_ROM_VISIBLE_KERNAL_VISIBLE   0x03
-#define CPU_PORT_IO_VISIBLE_CHARACTER_ROM_INVISIBLE 0x04
+
+#define CPU_PORT_BANK_MASK                          0x07
+
+#define CPU_PORT_BANK_ALL_RAM_VISIBLE_IO_INVISIBLE       0x00
+#define CPU_PORT_BANK_LORAM_HIRAM_VISIBLE                0x01
+#define CPU_PORT_BANK_LORAM_VISIBLE_KERNAL_VISIBLE       0x02
+#define CPU_PORT_BANK_BASIC_ROM_VISIBLE_KERNAL_VISIBLE   0x03
+
+#define CPU_PORT_BANK_IO_VISIBLE_CHARACTER_ROM_INVISIBLE 0x04
 
 #define VARTAB 0x2D
 #define MEMSIZE          0x37          // Pointer to highest BASIC RAM location (+1)

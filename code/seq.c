@@ -12,28 +12,33 @@
  * @param size The size of the returned data
  * @return If we were sucessful.
  */
-unsigned char seq_load (unsigned char* filename, unsigned int* size) {
+unsigned char* seq_load (unsigned char* filename, unsigned int* size) {
     unsigned char err;
-    unsigned int end;
+    unsigned char* dest;
 
-    if(err = exo_open(filename, &end)) {
-        return EXIT_FAILURE;
+    if(err = exo_open(filename, size)) {
+        return NULL;
     }
 
-    *size = (end - SCREEN_START) + 1;
-
-    if(err = exo_unpack()) {
+    if(!(dest = malloc(*size))) {
         exo_close();
-        return EXIT_FAILURE;
+        return NULL;
+    }
+
+    if(err = exo_unpack(dest)) {
+        exo_close();
+        free(dest);
+        return NULL;
     }
 
     // make sure first byte is clear screen
-    if (*(unsigned char*)SCREEN_START != 0x93) {
+    if (dest[0] != 0x93) {
         exo_close();
-        return EXIT_FAILURE;
+        free(dest);
+        return NULL;
     }
 
     exo_close();
 
-    return EXIT_SUCCESS;
+    return dest;
 }
