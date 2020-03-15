@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include "c64.h"
@@ -58,30 +59,36 @@ struct spd {
 };
 typedef struct spd spd;
 
-const unsigned char* SPRITE_AREA = SCREEN_START + VIC_VIDEO_ADR_SCREEN_DIVISOR + VIC_SPR_SIZE - 9;
+const unsigned char* SPRITE_AREA = SCREEN_START + VIC_VIDEO_ADR_SCREEN_DIVISOR + VIC_SPR_SIZE - 9; // 9 = header size
 const unsigned char SPRITE_MAX = 47;
 
 /* Load a sprite sheet in SpritePad format
  * @param filename - The filename on disk
  * @return - Whether the sheet successfully loaded into memory.
  */
-unsigned char spritesheet_load(char filename[]) {
+unsigned char spritesheet_load(unsigned char* filename) {
     FILE* fp;
     spd* spd_data;
+    unsigned char* header;
 
     fp = fopen(filename, "rb");
 
-    if(!fread(SPRITE_AREA, 9, 1, fp)) {
+    // Used to write this directly to the memory area, but we can't read it if we do.
+    if(!(header = malloc(9))
+        || !fread(header, 9, 1, fp)) {
         fclose(fp);
         return EXIT_FAILURE;
     }
 
-    spd_data = (spd*)SPRITE_AREA;
+    spd_data = (spd*)header;
 
     if(spd_data->sprite_count + 1 > SPRITE_MAX) {
+        free(header);
         fclose(fp);
         return EXIT_FAILURE;
     }
+
+    memcpy(SPRITE_AREA, header, 9);
 
     if(!fread(SPRITE_AREA + 9, VIC_SPR_SIZE, spd_data->sprite_count + 1, fp)) {
         fclose(fp);
@@ -93,6 +100,7 @@ unsigned char spritesheet_load(char filename[]) {
     *(unsigned char *)VIC_SPR_MCOLOR0 = spd_data->multicolor_0;
     *(unsigned char *)VIC_SPR_MCOLOR1 = spd_data->multicolor_1;
 
+    free(header);
     fclose(fp);
 
     return EXIT_SUCCESS;

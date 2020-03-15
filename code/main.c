@@ -14,7 +14,7 @@
 #include "level.h"
 #include "seq.h"
 
-#define DEBUG 1
+//#define DEBUG 1
 
 extern const unsigned char r_text_loading[];
 extern const unsigned char r_text_loading2[];
@@ -28,6 +28,7 @@ unsigned char main_irq_handler(void) {
     return consume_raster_irq(&main_raster_irq);
 }
 
+#if !DEBUG
 unsigned char intro_screen() {
     unsigned char err, joyval;
     unsigned char* data;
@@ -35,13 +36,18 @@ unsigned char intro_screen() {
 
     screen_init(true, true);
 
-    if(!(data = seq_load("newscreen.ser", &data_size))
-        || !fwrite(data, data_size, 1, stdout)) {
-        printf("Text load error\n");
-        return EXIT_FAILURE;
+    if(err = seq_load("newscreen.sex", &data_size)) {
+        return err;
     }
 
     while(1);
+
+    gotoxy(0, 0);
+
+    if(!fwrite(SCREEN_START, data_size, 1, stdout)) {
+        printf("Text load error\n");
+        return EXIT_FAILURE;
+    }
 
     puts(r_text_loading);
 
@@ -54,7 +60,7 @@ unsigned char intro_screen() {
 
     puts(r_text_loading3);
 
-    if(err = ocp_load("intro.ocr")) {
+    if(err = ocp_load("intro.ocx")) {
         printf("Bitmap load error: %x\n", err);
         return EXIT_FAILURE;
     }
@@ -74,9 +80,12 @@ unsigned char intro_screen() {
 
     return EXIT_SUCCESS;
 }
+#endif
 
 unsigned char main (void) {
     unsigned char err;
+
+    screen_init(false, true);
 
     pal_system(); // Reset the system's PAL flag as it could be garbage in various cases.
 
@@ -90,17 +99,17 @@ unsigned char main (void) {
 
     puts(r_text_loading3);
 
-    if(err = spritesheet_load("canada.spd")) {
-        printf("Sprite load error: %x\n", err);
-        while(1);
-    }
-
 #if !DEBUG
     if(err = intro_screen()) {
         screen_init(false, false);
         while(1);
     }
 #endif
+
+    if(err = spritesheet_load("canada.spd")) {
+        printf("Sprite load error: %x\n", err);
+        while(1);
+    }
 
     if(err = play_level()) {
         printf("Level error: %x\n", err);

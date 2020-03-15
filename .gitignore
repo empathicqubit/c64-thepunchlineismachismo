@@ -4,15 +4,31 @@ node_modules/
 .vscode/*
 !.vscode/launch.json
 *.o
+code/*.s
+resources/*/*.s
+!*_asm.s
 *.sprite.*
 /*.d81
 /*.prg
-*.sid
-*.ocr
-*.ser
-*.sidp
+*.out
 *.lbl
 *.pem
 docker/
+
+# Resources
+*.sex
+*.ocx
+*.sid
 *.snd
 *.snz
+*.sidp
+
+# Exomizer
+*.os*
+/tools/exo/*/*.prg
+/tools/exo/*/deps
+exobasic
+exomizer
+testrun
+sfxdecr*
+*.exo

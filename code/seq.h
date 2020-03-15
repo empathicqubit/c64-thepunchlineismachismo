@@ -4,4 +4,4 @@
  * @param size The size of the returned data
  * @return The file contents
  */
-unsigned char* seq_load (char filename[], unsigned int* size);
+unsigned char* seq_load (unsigned char* filename, unsigned int* size);

@@ -18,7 +18,7 @@ _sid_init:
 _sid_play:
 ;    This is busy-wait for the "correct" raster line. We don't need it.
 ;    I hate whoever put this here.
-;    lda #$40 
+;    lda #$40
 ;    cmp $d012
 ;    bne *-3
     jsr SID_START+3

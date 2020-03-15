@@ -35,13 +35,16 @@ unsigned char sid_play_sound(unsigned char* snz_pointer, unsigned char sound_idx
     return EXIT_SUCCESS;
 }
 
-unsigned char sid_load (char filename[]) {
+unsigned char sid_load (unsigned char* filename) {
+    unsigned char* buffer;
+    bool pal;
     FILE* fp;
-    char* buffer;
-    bool pal = get_tv();
+    pal = get_tv();
 
     if(pal) {
-        buffer = malloc(17);
+        if(!(buffer = malloc(17))) {
+            return EXIT_FAILURE;
+        }
         sprintf(buffer, "%sp", filename);
     }
     else {

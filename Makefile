@@ -1,18 +1,20 @@
 SHELL=busybox
 .SHELLFLAGS=sh -e -c
 
-D81=machismo.d81
+DISKIMAGE=machismo.d64
 SID_HIGHBYTE=B0
-BITMAP_START=E000
-SCREEN_START=C000
+BITMAP_START=C000
+SCREEN_START=E000
+CHARACTER_START=F000
 MODEL?=ntsc
 
 CC=cl65
-CCFLAGS=-Osr -O -g -t c64 -C linker.cfg $(DFLAGS) $(DBGFLAGS)
 
-DFLAGS?=-Wa "-DSID_START=\$$$(SID_HIGHBYTE)00" -Wc "-DBITMAP_START=0x$(BITMAP_START)" -Wc "-DSCREEN_START=0x$(SCREEN_START)" -Wc "-DSID_START=0x$(SID_HIGHBYTE)00" -Wc "-DSID_SIZE=$$sidsize"
+CFLAGS=-Osr -O -t c64 -C linker.cfg
+DFLAGS?=-Wa "--cpu" -Wa "6502X" -Wa "-DSID_START=\$$$(SID_HIGHBYTE)00" -Wc "-DSID_START=0x$(SID_HIGHBYTE)00"  -Wc "-DSID_SIZE=$$sidsize" -Wc "-DBITMAP_START=0x$(BITMAP_START)" -Wc "-DSCREEN_START=0x$(SCREEN_START)" -Wc "-DCHARACTER_START=0x$(CHARACTER_START)"
+DBGFLAGS?=-g -Wl "-Lnbuild/machismo.lbl" -vm -Wl "--mapfile,build/machismo.map" -Wl "--dbgfile,build/machismo.dbg"
 
-DBGFLAGS?=-Wl "-Lnbuild/machismo.lbl" -vm -Wl "--mapfile,build/machismo.map" -Wl "--dbgfile,build/machismo.dbg"
+CCFLAGS=$(CFLAGS) $(DFLAGS) $(DBGFLAGS)
 
 GT2RELOC_OPTS=-P -W$(SID_HIGHBYTE) -B1 -D1 -ZFB -C0 -E0 -H0 -R1
 
@@ -22,12 +24,12 @@ CC65_VERSION=V2.18
 
 all: build
 
-build: build/$(D81)
+build: build/$(DISKIMAGE)
 
-run: build/$(D81)
+run: build/$(DISKIMAGE)
 		SOMMELIER=$$(which sommelier && echo -n " --scale=0.5 --x-display=:0" || echo)
 		echo $$SOMMELIER
-		$$SOMMELIER $$(which x64sc x64 | head -1) -moncommands ./moncommands.vice +VICIIdsize -rsuser -rsuserdev 2 -rsdev3baud 2400 -rsuserbaud 2400 -rsdev3ip232 -initbreak 2061 -VICIIfilter 0 -model $(MODEL) -iecdevice8 -autostart-warp -nativemonitor -remotemonitor -remotemonitoraddress 127.0.0.1:2332 -sidenginemodel 256 -sound -autostart-handle-tde -residsamp 0 "$<"
+		$$SOMMELIER $$(which x64sc x64 | head -1) -moncommands ./moncommands.vice +VICIIdsize -rsuser -rsuserdev 2 -rsdev3baud 2400 -rsuserbaud 2400 -rsdev3ip232 -VICIIfilter 0 -model $(MODEL) -iecdevice8 -autostart-warp -nativemonitor -remotemonitor -remotemonitoraddress 127.0.0.1:2332 -sidenginemodel 256 -sound -autostart-handle-tde -residsamp 0 "$<"
 
 dm: ./docker
 		docker-compose run build
@@ -42,25 +44,28 @@ gt:
 clean:
 		rm -rf docker
 		rm -rf build
-		find . -iname '*.o' -exec rm -rf {} \;
+		find code -iname '*.o' -exec rm -rf {} \;
 		rm -rf $(music)
 		rm -rf $(bitmaps)
 		rm -rf resources/audio/*.snz
 		rm -rf $(sounds)
+		rm -rf $(seq)
+		cd tools/exo/src
+		make clean
 
-cp-emu: /mnt/chromeos/removable/Chromebook/user/roms/$(D81)
+cp-emu: /mnt/chromeos/removable/Chromebook/user/roms/$(DISKIMAGE)
 
-cp-c64: /mnt/chromeos/removable/C64/$(D81)
+cp-c64: /mnt/chromeos/removable/C64/$(DISKIMAGE)
 
-/mnt/chromeos/removable/Chromebook/user/roms/machismo.d81: build/$(D81)
+/mnt/chromeos/removable/Chromebook/user/roms/machismo.d64: build/$(DISKIMAGE)
 		cp $< $@
 
-/mnt/chromeos/removable/C64/machismo.d81: build/$(D81)
+/mnt/chromeos/removable/C64/machismo.d64: build/$(DISKIMAGE)
 		cp $< $@
 
 sprites := $(wildcard resources/sprites/*.spd)
 
-seq := $(patsubst %.seq,%.ser,$(wildcard resources/seq/*.seq))
+seq := $(patsubst %.seq,%.sex,$(wildcard resources/seq/*.seq))
 
 ntsc_music := $(patsubst %.sng,%.sid,$(wildcard resources/audio/*.sng))
 
@@ -77,24 +82,24 @@ charset := $(wildcard resources/charset/*.s)
 # Decided to use OCP since Multipaint supports it natively.
 # I wanted to use PNGs since they are well supported, but
 # I prefer having a simple toolset instead.
-bitmaps := $(patsubst %.ocp,%.ocr,$(wildcard resources/bitmap/*.ocp))
+bitmaps := $(patsubst %.ocp,%.ocx,$(wildcard resources/bitmap/*.ocp))
 
 code := $(wildcard code/*.c) $(wildcard code/*_asm.s) resources/sprites/canada.c
 
-build/machismo.d81: build/empty.d81 build/machismo.prg $(music) $(bitmaps) $(sprites) $(seq) resources/audio/canada.snz build/.sentinel
+build/machismo.d64: build/empty.d64 build/machismo.prg $(music) $(bitmaps) $(sprites) $(seq) resources/audio/canada.snz build/.sentinel
 		# Writes all files that have changed.
 		c1541 -attach $@ $(foreach content,$(filter-out $<,$?), -delete $(notdir $(content)) -write $(content) $(notdir $(content)))
 
-build/empty.d81: build/.sentinel
-		c1541 -format "canada,01" d81 "$@"
-		test ! -f "build/$(D81)" && cp "$@" "build/$(D81)" || exit 0
+build/empty.d64: build/.sentinel
+		c1541 -format "canada,01" d64 "$@"
+		test ! -f "build/$(DISKIMAGE)" && cp "$@" "build/$(DISKIMAGE)" || exit 0
 
 build/machismo.prg: build/.sentinel linker.cfg $(code) resources/text.s $(charset) $(music)
 		sidsize=$$(stat -c'%s' $(music) | sort -nr | head -1)
 		echo "SID SIZE $$sidsize"
 
-		$(CC) -S $(CCFLAGS) $(filter %.c %.s,$^)
-		$(CC) $(CCFLAGS) -o $@ $(filter %.c %.s,$^)
+		$(CC) $(CCFLAGS) -o "$@" $(filter %.c %.s,$^)
+		$(CC) $(CCFLAGS) -S $(filter %.c,$^)
 
 resources/audio/canada.snz: $(sounds)
 		sound_header="\x$$(printf '%x' $(words $(sounds)))"
@@ -123,11 +128,19 @@ resources/audio/canada.snz: $(sounds)
 build/rle: tools/rle.c build/.sentinel
 		gcc -o "$@" "$<"
 
-%.ocr: %.ocp build/rle
-		build/rle "$<" "$@"
+build/exomizer: tools/exo/src/exomizer build/.sentinel
+		cp "$<" "$@"
 
-%.ser: %.seq build/rle
-		build/rle "$<" "$@"
+tools/exo/src/exomizer: tools/exo/src/Makefile
+		cd "$(dir $<)"
+		make -j$$(nproc)
+
+%.ocx: %.ocp build/exomizer
+		# FIXME Must reorder file before writing
+		build/exomizer level -o "$@" "$<,0xBC00"
+
+%.sex: %.seq build/exomizer
+		build/exomizer level -o "$@" "$<,0x$(SCREEN_START)"
 
 ./docker: ./docker/Dockerfile ./docker/cert.pem ./docker/cc65.tar.gz ./docker/goattracker.zip
 

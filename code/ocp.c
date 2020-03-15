@@ -1,49 +1,43 @@
 #include <stdio.h>
+#include <string.h>
 #include <conio.h>
 #include <stdlib.h>
-#include "rle.h"
+#include "exo.h"
 #include "c64.h"
 
 unsigned char ocp_load (char filename[]) {
-  unsigned char addr[2];
-  unsigned char err;
-  unsigned int unpacked_size;
-  rle_cursor* rle;
+    unsigned int seek, unpacked_end;
+    unsigned char err;
 
-  if(!(rle = rle_open(filename, &unpacked_size))) {
-      return EXIT_FAILURE;
-  }
+    if(err = exo_open(filename, &unpacked_end)) {
+        return EXIT_FAILURE;
+    }
 
-  if(err = rle_unpack(rle, addr, 2)) {
-    rle_close(rle);
-    return err;
-  }
+    // FIXME Switch off/on I/O bank. See CHAR ROM code in utils
+    if(err = exo_unpack()) {
+        exo_close();
+        return err;
+    }
 
-  // make sure load address is $2000
-  if (addr[0] != 0x00 || addr[1] != 0x20) {
-    rle_close(rle);
-    return EXIT_FAILURE;
-  }
+    *(unsigned char *)VIC_CTRL1 |= VIC_CTRL1_BITMAP_ON;
+    *(unsigned char *)VIC_CTRL2 |= VIC_CTRL2_MULTICOLOR_ON;
 
-  *(unsigned char *)VIC_CTRL1 |= VIC_CTRL1_BITMAP_ON;
-  *(unsigned char *)VIC_CTRL2 |= VIC_CTRL2_MULTICOLOR_ON;
+    *(unsigned char *)VIC_VIDEO_ADR &= ~(VIC_VIDEO_ADR_CHAR_PTR_MASK);
+    *(unsigned char *)VIC_VIDEO_ADR |= ((BITMAP_START % VIC_BANK_SIZE) / VIC_VIDEO_ADR_CHAR_DIVISOR) << 1;
 
-  *(unsigned char *)VIC_VIDEO_ADR &= ~(VIC_VIDEO_ADR_CHAR_PTR_MASK);
-  *(unsigned char *)VIC_VIDEO_ADR |= ((BITMAP_START % VIC_BANK_SIZE) / VIC_VIDEO_ADR_CHAR_DIVISOR) << 1;
+    // FIXME Copy Color RAM to correct place after write
+    /*
+    seek = 0;
+    memcpy(BITMAP_START, data + seek, SCREEN_BITMAP_SIZE);
+    seek += SCREEN_BITMAP_SIZE;
+    memcpy(SCREEN_START, data + seek, SCREEN_BYTES);
+    seek += SCREEN_BYTES;
+    memcpy(VIC_BORDERCOLOR, data + seek, 1);
+    seek += 1 + 14; // 14 bytes of trash
+    memcpy(COLOR_RAM, data + seek, COLOR_RAM_SIZE);
 
-  if(
-      (err = rle_unpack(rle, BITMAP_START, SCREEN_BITMAP_SIZE))
-      || (err = rle_unpack(rle, SCREEN_START, SCREEN_BYTES))
-      || (err = rle_unpack(rle, VIC_BORDERCOLOR, 1))
-      || (err = rle_unpack(rle, VIC_BG_COLOR0, 1))
-      || (err = rle_unpack(rle, COLOR_RAM, 14)) // This is trash
-      || (err = rle_unpack(rle, COLOR_RAM, COLOR_RAM_SIZE))
-  ) {
-      rle_close(rle);
-      return err;
-  }
+    free(data);
+    */
 
-  rle_close(rle);
-
-  return EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 }

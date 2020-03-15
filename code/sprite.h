@@ -22,7 +22,7 @@ unsigned char spritesheet_animation_next(unsigned int action_time, unsigned char
  * to access.
  * @return - Whether the sheet successfully loaded into memory.
  */
-unsigned char spritesheet_load(char filename[]);
+unsigned char spritesheet_load(unsigned char* filename);
 
 /* Load a sprite with SpritePad metadata byte
  * @param sprite_slot - Which of the 8 sprite slots on the C64.

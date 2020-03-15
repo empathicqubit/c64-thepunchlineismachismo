@@ -1,1 +1,2 @@
 load_labels "build/machismo.lbl"
+bk ._main

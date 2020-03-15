@@ -2,7 +2,7 @@
 //
 // C64 generic definitions. Stolen from Elite128
 //
-// I prefer using this over some of the builtin structs because it is easier to 
+// I prefer using this over some of the builtin structs because it is easier to
 // match to assembly code docs.
 
 // ---------------------------------------------------------------------------
@@ -82,6 +82,7 @@
 // I/O: VIC
 
 #define CHARACTER_ROM    0xD000
+#define CHARACTER_ROM_SIZE 0x1000
 
 #define VIC_SPR0_X       0xD000
 #define VIC_SPR0_Y       0xD001

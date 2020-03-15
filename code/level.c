@@ -40,24 +40,24 @@ struct level_state {
 };
 
 level_state* state;
-unsigned int now; 
+unsigned int now;
 
 void depth_sort(char_state **characters) {
-    int i, j; 
+    int i, j;
     char_state *key;
-    for (i = 1; i < MAX_SCREEN_CHARACTERS; i++) { 
-        key = characters[i]; 
-        j = i - 1; 
-  
-        /* Move elements of arr[0..i-1], that are 
-          greater than key, to one position ahead 
+    for (i = 1; i < MAX_SCREEN_CHARACTERS; i++) {
+        key = characters[i];
+        j = i - 1;
+
+        /* Move elements of arr[0..i-1], that are
+          greater than key, to one position ahead
           of their current position */
-        while (j >= 0 && characters[j] && key && characters[j]->path_y < key->path_y) { 
-            characters[j + 1] = characters[j]; 
-            j = j - 1; 
-        } 
-        characters[j + 1] = key; 
-    } 
+        while (j >= 0 && characters[j] && key && characters[j]->path_y < key->path_y) {
+            characters[j + 1] = characters[j];
+            j = j - 1;
+        }
+        characters[j + 1] = key;
+    }
 }
 
 unsigned char level_screen_delete_character(level_screen* screen, unsigned char idx) {
@@ -156,7 +156,7 @@ unsigned char process_cpu_input(void) {
     return EXIT_SUCCESS;
 }
 
-unsigned char* level_screen_load_bg(unsigned char filename[], unsigned int* fullsize) {
+unsigned char level_screen_load_bg(unsigned char* filename, unsigned int* fullsize) {
     return seq_load(filename, fullsize);
 }
 
@@ -205,6 +205,7 @@ unsigned char move_to_screen(unsigned char screen_idx, unsigned char guy_idx) {
 }
 
 unsigned char update(void) {
+    /*
     unsigned char i, j, err;
     unsigned int action_time, status_time;
     char_state* other;
@@ -271,11 +272,11 @@ unsigned char update(void) {
                             // Attacker facing left
                             ? (
                                 (me->path_x < other->path_x + 50)
-                                && (me->path_x >= other->path_x) 
+                                && (me->path_x >= other->path_x)
                             )
                             // Attacker facing right
                             : (
-                                (me->path_x + 50 > other->path_x) 
+                                (me->path_x + 50 > other->path_x)
                                 && (me->path_x + 50 < other->path_x + 60)
                             )
                         )
@@ -352,6 +353,7 @@ unsigned char update(void) {
     if(my_last_resort && now % 2 == 0) {
         depth_sort(screen->characters);
     }
+    */
 
     return EXIT_SUCCESS;
 }
@@ -451,7 +453,8 @@ unsigned char level_irq_handler(void) {
 }
 
 unsigned char level_state_init(unsigned char num) {
-    unsigned char i;
+    unsigned char i, err;
+    unsigned char* bg_data;
     char_state* meece;
     level_screen** screens;
     level_screen* screen;
@@ -464,7 +467,7 @@ unsigned char level_state_init(unsigned char num) {
     if(num == 0) {
         screen = calloc(1, sizeof(level_screen));
 
-        screen->bg_data = "froad1.ser";
+        screen->bg_data = "froad1.sex";
 
         state->guy = char_state_init(CHAR_TYPE_GUY);
 
@@ -497,7 +500,7 @@ unsigned char level_state_init(unsigned char num) {
 
         screen = calloc(1, sizeof(level_screen));
 
-        screen->bg_data = "froad2.ser";
+        screen->bg_data = "froad2.sex";
 
         level_screen_add_character(screen, state->guy);
 
@@ -536,9 +539,18 @@ unsigned char level_state_init(unsigned char num) {
 
     for(i = 0; i < MAX_SCREENS; i++) {
         screen = screens[i];
-        if(!(screen->bg_data = level_screen_load_bg(screens[i]->bg_data, &(screens[i]->bg_length)))) {
-            return EXIT_FAILURE;
+        if(!screen) {
+            break;
         }
+
+        if(err = level_screen_load_bg(screen->bg_data, &(screen->bg_length))) {
+            return err;
+        }
+
+        bg_data = malloc(screen->bg_length);
+
+        screen->bg_data = bg_data;
+        memcpy(bg_data, SCREEN_START, screen->bg_length);
     }
 
     return EXIT_SUCCESS;

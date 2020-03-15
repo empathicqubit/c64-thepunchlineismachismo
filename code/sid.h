@@ -1,4 +1,4 @@
-unsigned char sid_load (char filename[]);
+unsigned char sid_load (unsigned char* filename);
 
 unsigned char sid_stop (void);
 
