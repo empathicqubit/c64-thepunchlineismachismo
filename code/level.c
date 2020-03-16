@@ -205,7 +205,6 @@ unsigned char move_to_screen(unsigned char screen_idx, unsigned char guy_idx) {
 }
 
 unsigned char update(void) {
-    /*
     unsigned char i, j, err;
     unsigned int action_time, status_time;
     char_state* other;
@@ -353,7 +352,6 @@ unsigned char update(void) {
     if(my_last_resort && now % 2 == 0) {
         depth_sort(screen->characters);
     }
-    */
 
     return EXIT_SUCCESS;
 }
@@ -502,8 +500,6 @@ unsigned char level_state_init(unsigned char num) {
 
         screen->bg_data = "froad2.sex";
 
-        level_screen_add_character(screen, state->guy);
-
         meece = char_state_init(CHAR_TYPE_MOOSE);
         meece->path_x = 0;
         meece->path_y = 0;
@@ -532,6 +528,8 @@ unsigned char level_state_init(unsigned char num) {
         screens[1] = screen;
 
         state->screen_index = 0;
+
+        level_screen_add_character(screens[state->screen_index], state->guy);
     }
     else {
         return EXIT_FAILURE;
@@ -546,11 +544,6 @@ unsigned char level_state_init(unsigned char num) {
         if(!(screen->bg_data = level_screen_load_bg(screen->bg_data, &(screen->bg_length)))) {
             return EXIT_FAILURE;
         }
-
-        bg_data = malloc(screen->bg_length);
-
-        screen->bg_data = bg_data;
-        memcpy(bg_data, SCREEN_START, screen->bg_length);
     }
 
     return EXIT_SUCCESS;
@@ -559,29 +552,40 @@ unsigned char level_state_init(unsigned char num) {
 unsigned char play_level (void) {
     unsigned char err;
 
+    screen_init(true);
+
+    puts("growing pine needles...");
+
+    if(err = spritesheet_load("canada.spd")) {
+        printf("sprite load error: %x\n", err);
+        while(1);
+    }
+
+    puts("beebifying hair spikes...");
+
     if(!(state->snz = snz_load("canada.snz", &err))) {
-        printf("Sound load error: %x\n", err);
+        printf("sound load error: %x\n", err);
         return EXIT_FAILURE;
     }
 
+    puts("compressing accordions...");
+
     if(err = sid_load("empty.sid")) {
-        printf("SID load error: %x\n", err);
+        printf("sid load error: %x\n", err);
         return EXIT_FAILURE;
     }
 
     if(err = level_state_init(0)) {
-        printf("Level state init error: %x\n", err);
+        printf("level state init error: %x\n", err);
         return EXIT_FAILURE;
     }
 
     if(err = level_screen_init_bg(state->screens[state->screen_index]->bg_data)) {
-        printf("Level background init error: %x\n", err);
+        printf("level background init error: %x\n", err);
         return EXIT_FAILURE;
     }
 
     setup_irq_handler(&level_irq_handler);
-
-    screen_init(true);
 
     bgcolor(COLOR_LIGHTBLUE);
     bordercolor(COLOR_GREEN);

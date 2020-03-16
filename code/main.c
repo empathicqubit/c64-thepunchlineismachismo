@@ -14,11 +14,7 @@
 #include "level.h"
 #include "seq.h"
 
-//#define DEBUG 1
-
-extern const unsigned char r_text_loading[];
-extern const unsigned char r_text_loading2[];
-extern const unsigned char r_text_loading3[];
+#define DEBUG 1
 
 void main_raster_irq(void) {
     sid_play_frame();
@@ -28,7 +24,6 @@ unsigned char main_irq_handler(void) {
     return consume_raster_irq(&main_raster_irq);
 }
 
-#if !DEBUG
 unsigned char intro_screen() {
     unsigned char err, joyval;
     unsigned int data_size;
@@ -36,16 +31,14 @@ unsigned char intro_screen() {
 
     screen_init(true);
 
-    puts(r_text_loading);
+    puts("charging moose...");
 
     if(err = sid_load("intro.sid")) {
         printf("sid load error: %x\n", err);
         return EXIT_FAILURE;
     }
 
-    puts(r_text_loading2);
-
-    puts(r_text_loading3);
+    puts("reticulating goggles...");
 
     if(err = ocp_load("intro.ocx")) {
         printf("bitmap load error: %x\n", err);
@@ -67,10 +60,11 @@ unsigned char intro_screen() {
 
     return EXIT_SUCCESS;
 }
-#endif
 
 unsigned char main (void) {
     unsigned char err;
+
+    character_init(true);
 
     screen_init(true);
 
@@ -80,23 +74,12 @@ unsigned char main (void) {
 
     joy_install(&joy_static_stddrv);
 
-    puts(r_text_loading2);
-
-    character_init(true);
-
-    puts(r_text_loading3);
-
 #if !DEBUG
     if(err = intro_screen()) {
         screen_init(false);
         while(1);
     }
 #endif
-
-    if(err = spritesheet_load("canada.spd")) {
-        printf("sprite load error: %x\n", err);
-        while(1);
-    }
 
     if(err = play_level()) {
         printf("level error: %x\n", err);

@@ -48,7 +48,7 @@ void wait (unsigned int duration) {
  */
 void character_init(bool use_graphics_charset) {
     hide_io();
-    memcpy(CHARACTER_START, CHARACTER_ROM + (use_graphics_charset * VIC_VIDEO_ADR_CHAR_DIVISOR), CHARACTER_ROM_SIZE);
+    memcpy(CHARACTER_START, CHARACTER_ROM + (!use_graphics_charset * VIC_VIDEO_ADR_CHAR_DIVISOR), CHARACTER_ROM_SIZE);
     show_io();
 }
 
