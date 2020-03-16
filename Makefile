@@ -48,7 +48,7 @@ clean:
 		find code -iname '*.o' -exec rm -rf {} \;
 		rm -rf $(music)
 		rm -rf $(bitmaps)
-		rm -rf *.oci
+		rm -rf *.ocb *.ocs
 		rm -rf resources/audio/*.snz
 		rm -rf $(sounds)
 		rm -rf $(seq)
@@ -88,7 +88,7 @@ bitmaps := $(patsubst %.ocp,%.ocx,$(wildcard resources/bitmap/*.ocp))
 
 code := $(wildcard code/*.c) $(wildcard code/*_asm.s) resources/sprites/canada.c
 
-build/machismo.d64: build/empty.d64 build/machismo.prg $(music) $(bitmaps) $(sprites) $(seq) resources/audio/canada.snz build/.sentinel
+build/machismo.d64: build/empty.d64 build/machismo.prg $(music) $(patsubst %.ocx,%.ocb,$(bitmaps)) $(patsubst %.ocx,%.ocs,$(bitmaps)) $(sprites) $(seq) resources/audio/canada.snz build/.sentinel
 		# Writes all files that have changed.
 		c1541 -attach $@ $(foreach content,$(filter-out $<,$?), -delete $(notdir $(content)) -write $(content) $(notdir $(content)))
 
@@ -134,14 +134,17 @@ tools/exo/src/exomizer: tools/exo/src/Makefile
 		cd "$(dir $<)"
 		make -j$$(nproc)
 
-%.oci: %.ocp
-		dd "if=$<" bs=1 skip=8002 count=2016 > "$@"
-		dd "if=/dev/zero" bs=$$((0x$(BITMAP_START) - 0x$(SCREEN_START) - 2016)) count=1 >> "$@"
-		dd "if=$<" skip=2 bs=1 count=8000 >> "$@"
+%.ocb: %.ocp build/exomizer
+		dd "if=$<" skip=2 bs=1 count=8000 > "$@.tmp"
+		build/exomizer level -c "$@.tmp@0" -o "$@"
+		rm "$@.tmp"
 
-%.ocx: %.oci build/exomizer
-		# FIXME Must reorder file before writing
-		build/exomizer level -c "$<@0" -o "$@"
+%.ocs: %.ocp build/exomizer
+		dd "if=$<" bs=1 skip=8002 count=2016 > "$@.tmp"
+		build/exomizer level -c "$@.tmp@0" -o "$@"
+		rm "$@.tmp"
+
+%.ocx: %.ocs %.ocb
 
 %.sex: %.seq build/exomizer
 		build/exomizer level -c "$<@0" -o "$@"

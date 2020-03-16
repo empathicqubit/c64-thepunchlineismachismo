@@ -9,7 +9,27 @@
 unsigned char ocp_load (char filename[]) {
     unsigned int seek, size;
     unsigned char* color_temp;
-    unsigned char err;
+    unsigned char err, len;
+
+    len = strlen(filename);
+    if(len < 4) {
+        return EXIT_FAILURE;
+    }
+
+    memcpy(&(filename[len - 4]), ".ocb", 4);
+
+    if(err = exo_open(filename, &size)) {
+        return EXIT_FAILURE;
+    }
+
+    if(err = exo_unpack(BITMAP_START)) {
+        exo_close();
+        return err;
+    }
+
+    exo_close();
+
+    memcpy(&(filename[len - 4]), ".ocs", 4);
 
     if(err = exo_open(filename, &size)) {
         return EXIT_FAILURE;
@@ -19,6 +39,8 @@ unsigned char ocp_load (char filename[]) {
         exo_close();
         return err;
     }
+
+    exo_close();
 
     if(!(color_temp = malloc(COLOR_RAM_SIZE))) {
         return EXIT_FAILURE;

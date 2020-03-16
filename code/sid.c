@@ -67,7 +67,7 @@ unsigned char sid_load (unsigned char* filename) {
     return EXIT_SUCCESS;
 }
 
-unsigned char* snz_load(char filename[], unsigned char* error) {
+unsigned char* snz_load(unsigned char* filename, unsigned char* error) {
     FILE* fp;
     int size = 0;
     unsigned char* snz;

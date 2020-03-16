@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <conio.h>
 #include "utils.h"
 
 FILE* _crunched_fp = NULL;
@@ -8,6 +9,7 @@ extern void __fastcall__ decrunch(void);
 unsigned char* exo_loadaddroffs = 0xffff;
 
 unsigned char __fastcall__ get_crunched_byte(void) {
+    bordercolor((bordercolor(0) + 1) % 16);
     return fgetc(_crunched_fp);
 }
 
