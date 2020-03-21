@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <cbm.h>
 #include "c64.h"
 #include "utils.h"
@@ -79,6 +80,8 @@ unsigned char* snz_load(unsigned char* filename, unsigned char* error) {
     }
 
     fp = fopen(filename, "rb");
+
+    memcpy(malloc(6), "death", 6);
 
     if(!(snz = malloc(size))) {
         return NULL;

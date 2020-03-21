@@ -34,6 +34,7 @@ typedef struct level_state level_state;
 struct level_state {
     unsigned char* snz; // Pointer to the loaded sounds
     unsigned char screen_index; // Which screen are we looking at.
+    bool bg_rendered; // Was the background rendered since update?
     char_state* guy; // State for our guy gets put here so it's easier
                     // To find him, since we deal with him a lot.
     level_screen* screens[MAX_SCREENS];
@@ -160,8 +161,8 @@ unsigned char* level_screen_load_bg(unsigned char* filename, unsigned int* fulls
     return seq_load(filename, fullsize);
 }
 
-unsigned char level_screen_init_bg(unsigned char* bg) {
-    unsigned int fullsize, partialsize;
+unsigned char level_screen_init_bg(unsigned char* bg, unsigned int fullsize) {
+    unsigned int partialsize;
     unsigned char bg_char;
 
     partialsize = fullsize;
@@ -170,7 +171,9 @@ unsigned char level_screen_init_bg(unsigned char* bg) {
     }
     partialsize--;
 
+    gotoxy(0,0);
     fwrite(bg, partialsize, 1, stdout);
+    screen_init(false);
     // FIXME hack
     *(unsigned char*)(SCREEN_START + XSIZE * YSIZE - 1) = *(unsigned char*)(SCREEN_START + XSIZE * YSIZE - 2);
     COLOR_RAM[COLOR_RAM_SIZE - 1] = COLOR_RAM[COLOR_RAM_SIZE - 2];
@@ -197,9 +200,7 @@ unsigned char move_to_screen(unsigned char screen_idx, unsigned char guy_idx) {
         return err;
     }
 
-    if(err = level_screen_init_bg(dest_screen->bg_data)) {
-        return err;
-    }
+    state->bg_rendered = false;
 
     return EXIT_SUCCESS;
 }
@@ -357,7 +358,7 @@ unsigned char update(void) {
 }
 
 unsigned char render() {
-    unsigned char i, sheet_idx, action_flags;
+    unsigned char i, sheet_idx, action_flags, err;
     bool animate = true;
     sprite_sequence* selected_sprite;
     char_sprite_group* selected_char;
@@ -367,7 +368,10 @@ unsigned char render() {
     sprite_sequence* after_finish = NULL;
     level_screen* screen = state->screens[state->screen_index];
 
-    gotoxy(0,0);
+    if(!state->bg_rendered && (err = level_screen_init_bg(screen->bg_data, screen->bg_length))) {
+        return err;
+    }
+    state->bg_rendered = true;
 
     for(i = 0; i < MAX_SCREEN_CHARACTERS; i++) {
         me = screen->characters[i];
@@ -443,7 +447,9 @@ void level_raster_irq(void) {
     now++;
 
     sid_play_frame();
-    update();
+    if(state->bg_rendered) {
+        update();
+    }
 }
 
 unsigned char level_irq_handler(void) {
@@ -451,7 +457,7 @@ unsigned char level_irq_handler(void) {
 }
 
 unsigned char level_state_init(unsigned char num) {
-    unsigned char i;
+    unsigned char i, err;
     unsigned char* bg_data;
     char_state* meece;
     level_screen** screens;
@@ -460,6 +466,11 @@ unsigned char level_state_init(unsigned char num) {
     state = calloc(1, sizeof(level_state));
 
     screens = state->screens;
+
+    if(!(state->snz = snz_load("canada.snz", &err))) {
+        printf("sound load error: %x\n", err);
+        return EXIT_FAILURE;
+    }
 
     // FIXME map screen?
     if(num == 0) {
@@ -551,6 +562,7 @@ unsigned char level_state_init(unsigned char num) {
 
 unsigned char play_level (void) {
     unsigned char err;
+    level_screen* screen;
 
     screen_init(true);
 
@@ -563,24 +575,21 @@ unsigned char play_level (void) {
 
     puts("beebifying hair spikes...");
 
-    if(!(state->snz = snz_load("canada.snz", &err))) {
-        printf("sound load error: %x\n", err);
-        return EXIT_FAILURE;
-    }
-
-    puts("compressing accordions...");
-
     if(err = sid_load("empty.sid")) {
         printf("sid load error: %x\n", err);
         return EXIT_FAILURE;
     }
+
+    puts("compressing accordions...");
 
     if(err = level_state_init(0)) {
         printf("level state init error: %x\n", err);
         return EXIT_FAILURE;
     }
 
-    if(err = level_screen_init_bg(state->screens[state->screen_index]->bg_data)) {
+    screen = state->screens[state->screen_index];
+
+    if(err = level_screen_init_bg(screen->bg_data, screen->bg_length)) {
         printf("level background init error: %x\n", err);
         return EXIT_FAILURE;
     }

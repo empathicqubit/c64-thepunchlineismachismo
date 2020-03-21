@@ -17,7 +17,7 @@ void wait (unsigned int duration);
  */
 unsigned char utils_get_unused_lfn(void);
 
-/** Reset the screen to VIC bank #2
+/** Reset the screen to VIC bank #3
  * @param clear - Clear the screen before switching to it.
  */
 void screen_init (bool clear);
