@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <time.h>
 #include <stdbool.h>
@@ -172,9 +173,8 @@ unsigned char level_screen_init_bg(unsigned char* bg, unsigned int fullsize) {
     partialsize--;
 
     gotoxy(0,0);
-    fwrite(bg, partialsize, 1, stdout);
+    write(STDOUT_FILENO, bg, partialsize);
     screen_init(false);
-    // FIXME hack
     *(unsigned char*)(SCREEN_START + XSIZE * YSIZE - 1) = *(unsigned char*)(SCREEN_START + XSIZE * YSIZE - 2);
     COLOR_RAM[COLOR_RAM_SIZE - 1] = COLOR_RAM[COLOR_RAM_SIZE - 2];
 
