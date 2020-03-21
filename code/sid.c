@@ -38,8 +38,11 @@ unsigned char sid_play_sound(unsigned char* snz_pointer, unsigned char sound_idx
 
 unsigned char sid_load (unsigned char* filename) {
     unsigned char* buffer;
+    unsigned int i;
+    int c;
     bool pal;
     FILE* fp;
+
     pal = get_tv();
 
     if(pal) {
@@ -54,9 +57,10 @@ unsigned char sid_load (unsigned char* filename) {
 
     fp = fopen(buffer, "rb");
 
-    if(!fread(SID_START, 256, SID_SIZE / 256 + 1, fp)) {
-        fclose(fp);
-        return EXIT_FAILURE;
+    i = 0;
+    c = -1;
+    while((c = fgetc(fp)) != -1) {
+        ((unsigned char *)SID_START)[i++] = (unsigned char)c;
     }
 
     fclose(fp);

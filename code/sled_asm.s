@@ -1,6 +1,6 @@
-.segment "SLED"
+.ifdef __SLED_START__
 
-.import _screen_init
+.segment "SLED"
 
 .proc SLED
 
@@ -66,6 +66,16 @@ LDY #$1A
 STA bounce
 STX bounce+1
 STY bounce+2
+
+.endproc
+
+.endif
+
+.segment "PRESTARTUP"
+
+.proc PRESTARTUP
+
+.import _screen_init
 
 LDA #$01
 JSR _screen_init

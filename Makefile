@@ -11,7 +11,14 @@ MODEL?=ntsc
 
 CC=cl65
 
-CFLAGS=-Osr -O -t c64 -C linker.cfg
+SFX=1
+ifdef SFX
+LINKER_CFG=linker_sfx.cfg
+else
+LINKER_CFG=linker.cfg
+endif
+
+CFLAGS=-Osr -O -t c64 -C "$(LINKER_CFG)"
 DFLAGS?=-Wa "--cpu" -Wa "6502X" -Wa "-DSID_START=\$$$(SID_HIGHBYTE)00" -Wc "-DSID_START=0x$(SID_HIGHBYTE)00"  -Wc "-DSID_SIZE=$$sidsize" -Wc "-DBITMAP_START=0x$(BITMAP_START)" -Wc "-DSCREEN_START=0x$(SCREEN_START)" -Wc "-DCHARACTER_START=0x$(CHARACTER_START)" -Wc "-DSPRITE_START=0x$(SPRITE_START)"
 DBGFLAGS?=-g -Wl "-Lnbuild/machismo.lbl" -vm -Wl "--mapfile,build/machismo.map" -Wl "--dbgfile,build/machismo.dbg"
 
@@ -60,10 +67,10 @@ cp-emu: /mnt/chromeos/removable/Chromebook/user/roms/$(DISKIMAGE)
 cp-c64: /mnt/chromeos/removable/C64/$(DISKIMAGE)
 
 /mnt/chromeos/removable/Chromebook/user/roms/machismo.d64: build/$(DISKIMAGE)
-		cp $< $@
+		cp "$<" "$@"
 
 /mnt/chromeos/removable/C64/machismo.d64: build/$(DISKIMAGE)
-		cp $< $@
+		cp "$<" "$@"
 
 sprites := $(wildcard resources/sprites/*.spd)
 
@@ -96,7 +103,14 @@ build/empty.d64: build/.sentinel
 		c1541 -format "canada,01" d64 "$@"
 		test ! -f "build/$(DISKIMAGE)" && cp "$@" "build/$(DISKIMAGE)" || exit 0
 
-build/machismo.prg: build/.sentinel linker.cfg $(code) resources/text.s $(charset) $(music)
+build/machismo.prg: build/exomizer build/precrunch.prg
+ifdef SFX
+	"$<" sfx 0x0401 -x3 "$(filter-out $<,$^)" -o "$@"
+else
+	cp "$(filter-out $<,$^)" "$@"
+endif
+
+build/precrunch.prg: build/.sentinel $(LINKER_CFG) $(code) resources/text.s $(charset) $(music)
 		sidsize=$$(stat -c'%s' $(music) | sort -nr | head -1)
 		echo "SID SIZE $$sidsize"
 
@@ -134,20 +148,20 @@ tools/exo/src/exomizer: tools/exo/src/Makefile
 		cd "$(dir $<)"
 		make -j$$(nproc)
 
-%.ocb: %.ocp build/exomizer
-		dd "if=$<" skip=2 bs=1 count=8000 > "$@.tmp"
-		build/exomizer level -c "$@.tmp@0" -o "$@"
+%.ocb: build/exomizer %.ocp
+		dd "if=$(filter-out $<,$^)" skip=2 bs=1 count=8000 > "$@.tmp"
+		"$<" level -c "$@.tmp@0" -o "$@"
 		rm "$@.tmp"
 
-%.ocs: %.ocp build/exomizer
-		dd "if=$<" bs=1 skip=8002 count=2016 > "$@.tmp"
-		build/exomizer level -c "$@.tmp@0" -o "$@"
+%.ocs: build/exomizer %.ocp
+		dd "if=$(filter-out $<,$^)" bs=1 skip=8002 count=2016 > "$@.tmp"
+		"$<" level -c "$@.tmp@0" -o "$@"
 		rm "$@.tmp"
 
 %.ocx: %.ocs %.ocb
 
-%.sex: %.seq build/exomizer
-		build/exomizer level -c "$<@0" -o "$@"
+%.sex: build/exomizer %.seq
+		"$<" level -c "$(filter-out $<,$^)@0" -o "$@"
 
 ./docker: ./docker/Dockerfile ./docker/cert.pem ./docker/cc65.tar.gz ./docker/goattracker.zip
 
@@ -164,7 +178,7 @@ tools/exo/src/exomizer: tools/exo/src/Makefile
 		curl -L 'http://csdb.dk/getinternalfile.php/180091/GoatTracker_2.75.zip' > "$@" || rm "$@"
 
 # A single pattern rule will create all appropriate folders as required
-.PRECIOUS: %/.sentinel %.oci
+.PRECIOUS: %/.sentinel
 %/.sentinel:
 		mkdir -p ${@D}
 		touch $@
