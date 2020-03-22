@@ -38,9 +38,10 @@
 ; This function will not change the interrupt status bit and it will not
 ; modify the memory configuration.
 ; -------------------------------------------------------------------
+.include "c64.inc"
 .segment "CODE"
 .export _decrunch
-.import _get_crunched_byte, _exo_loadaddroffs
+.import _fgetc, _crunched_fp, _exo_loadaddroffs
 
 ; -------------------------------------------------------------------
 ; Controls if the shared get_bits routines should be inlined or not.
@@ -152,8 +153,12 @@ get_crunched_byte:
         ora #$06 ; IO + LO RAM
         sta $1
 
-        jsr _get_crunched_byte
+        lda _crunched_fp
+        ldx _crunched_fp+1
+        jsr _fgetc
         sta get_crunched_byte_temp
+
+        inc VIC_BORDERCOLOR
 
         lda #$06
         eor $1 ; #$000 = ALL RAM visible, no IO
