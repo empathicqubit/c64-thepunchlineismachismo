@@ -37,7 +37,7 @@ build: build/$(DISKIMAGE)
 run: build/$(DISKIMAGE)
 		SOMMELIER=$$(which sommelier && echo -n " --scale=0.5 --x-display=:0" || echo)
 		echo $$SOMMELIER
-		$$SOMMELIER $$(which x64sc x64 | head -1) -moncommands ./moncommands.vice +VICIIdsize -rsuser -rsuserdev 2 -rsdev3baud 2400 -rsuserbaud 2400 -rsdev3ip232 -VICIIfilter 0 -model $(MODEL) -iecdevice8 -autostart-warp -nativemonitor -remotemonitor -remotemonitoraddress 127.0.0.1:2332 -sidenginemodel 256 -sound -autostart-handle-tde -residsamp 0 "$<"
+		$$SOMMELIER $$(which x64sc x64 | head -1) -moncommands ./moncommands.vice +VICIIdsize -rsuser -rsuserdev 2 -rsdev3baud 2400 -rsuserbaud 2400 -rsdev3ip232 -VICIIfilter 0 -model $(MODEL) -iecdevice8 -autostart-warp -nativemonitor -remotemonitor -remotemonitoraddress 127.0.0.1:2332 -raminitrandomchance 0xff -sidenginemodel 256 -sound -autostart-handle-tde -residsamp 0 "$<"
 
 dm: ./docker
 		docker-compose run build

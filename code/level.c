@@ -4,6 +4,7 @@
 #include <string.h>
 #include <time.h>
 #include <stdbool.h>
+#include <cbm.h>
 #include <c64.h>
 #include <joystick.h>
 #include <6502.h>
@@ -163,7 +164,7 @@ unsigned char* level_screen_load_bg(unsigned char* filename, unsigned int* fulls
 }
 
 unsigned char level_screen_init_bg(unsigned char* bg, unsigned int fullsize) {
-    unsigned int partialsize;
+    unsigned int partialsize, i;
     unsigned char bg_char;
 
     partialsize = fullsize;
@@ -173,8 +174,12 @@ unsigned char level_screen_init_bg(unsigned char* bg, unsigned int fullsize) {
     partialsize--;
 
     gotoxy(0,0);
-    write(STDOUT_FILENO, bg, partialsize);
+    cbm_k_ckout(STDOUT_FILENO);
+    for(i = 0; i < partialsize; i++) {
+        cbm_k_bsout(bg[i]);
+    }
     screen_init(false);
+
     *(unsigned char*)(SCREEN_START + XSIZE * YSIZE - 1) = *(unsigned char*)(SCREEN_START + XSIZE * YSIZE - 2);
     COLOR_RAM[COLOR_RAM_SIZE - 1] = COLOR_RAM[COLOR_RAM_SIZE - 2];
 
