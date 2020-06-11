@@ -29,6 +29,8 @@ docker/
 *.os*
 /tools/exo/*/*.prg
 /tools/exo/*/deps
+*.yy.c
+asm.tab.*
 exobasic
 exomizer
 testrun
