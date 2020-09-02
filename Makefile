@@ -18,7 +18,7 @@ else
 LINKER_CFG=linker.cfg
 endif
 
-CFLAGS=-Osr -O -t c64 -C "$(LINKER_CFG)"
+CFLAGS=-O -Osr -t c64 -C "$(LINKER_CFG)"
 DFLAGS?=-Wa "--cpu" -Wa "6502X" -Wa "-DSID_START=\$$$(SID_HIGHBYTE)00" -Wc "-DSID_START=0x$(SID_HIGHBYTE)00"  -Wc "-DSID_SIZE=$$sidsize" -Wc "-DBITMAP_START=0x$(BITMAP_START)" -Wc "-DSCREEN_START=0x$(SCREEN_START)" -Wc "-DCHARACTER_START=0x$(CHARACTER_START)" -Wc "-DSPRITE_START=0x$(SPRITE_START)"
 DBGFLAGS?=-g -Wl "-Lnbuild/machismo.lbl" -vm -Wl "--mapfile,build/machismo.map" -Wl "--dbgfile,build/machismo.dbg"
 
@@ -35,9 +35,9 @@ all: build
 build: build/$(DISKIMAGE)
 
 run: build/$(DISKIMAGE)
-		SOMMELIER=$$(which sommelier && echo -n " --scale=0.5 --x-display=:0" || echo)
+		SOMMELIER=$$(which sommelier && echo -n " --scale=1" || echo)
 		echo $$SOMMELIER
-		$$SOMMELIER $$(which x64sc x64 | head -1) -moncommands ./moncommands.vice +VICIIdsize -rsuser -rsuserdev 2 -rsdev3baud 2400 -rsuserbaud 2400 -rsdev3ip232 -VICIIfilter 0 -model $(MODEL) -iecdevice8 -autostart-warp -nativemonitor -remotemonitor -remotemonitoraddress 127.0.0.1:2332 -raminitrandomchance 0xff -sidenginemodel 256 -sound -autostart-handle-tde -residsamp 0 "$<"
+		$$SOMMELIER $$(which x64sc x64 | head -1) -directory '$$$$' -moncommands ./moncommands.vice +VICIIdsize -rsuser -rsuserdev 2 -rsdev3baud 2400 -rsuserbaud 2400 -rsdev3ip232 -VICIIfilter 0 -model $(MODEL) -iecdevice8 -autostart-warp -nativemonitor -remotemonitor -remotemonitoraddress 127.0.0.1:2332 -raminitrandomchance 0xff -sidenginemodel 256 -sound -autostart-handle-tde -residsamp 0 -autostart "$<"
 
 dm: ./docker
 		docker-compose run build
