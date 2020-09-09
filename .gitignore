@@ -5,6 +5,7 @@ node_modules/
 !.vscode/launch.json
 *.o
 code/*.s
+*.i
 resources/*/*.s
 !*_asm.s
 *.sprite.*

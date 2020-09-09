@@ -30,7 +30,34 @@ CC65_VERSION=V2.18
 
 .ONESHELL:
 
+sprites := $(wildcard resources/sprites/*.spd)
+
+seq := $(patsubst %.seq,%.sex,$(wildcard resources/seq/*.seq))
+
+ntsc_music := $(patsubst %.sng,%.sid,$(wildcard resources/audio/*.sng))
+
+pal_music := $(patsubst %.sid,%.sidp,$(ntsc_music))
+
+music := $(ntsc_music) $(pal_music)
+
+sounds := $(sort $(patsubst %.ins,%.snd,$(wildcard resources/audio/*.ins)))
+
+sound_sizes=$(foreach sound,$(sounds),$(shell stat -c '%s' "$(sound)"))
+
+charset := $(wildcard resources/charset/*.s)
+
+# Decided to use OCP since Multipaint supports it natively.
+# I wanted to use PNGs since they are well supported, but
+# I prefer having a simple toolset instead.
+bitmaps := $(patsubst %.ocp,%.ocx,$(wildcard resources/bitmap/*.ocp))
+
+code := $(wildcard code/*.c) $(wildcard code/*_asm.s) resources/sprites/canada.c
+
+intermediates := $(patsubst %.c,%.i,$(filter %.c,$(code)))
+
 all: build
+
+preprocess-only: $(intermediates)
 
 build: build/$(DISKIMAGE)
 
@@ -72,29 +99,6 @@ cp-c64: /mnt/chromeos/removable/C64/$(DISKIMAGE)
 /mnt/chromeos/removable/C64/machismo.d64: build/$(DISKIMAGE)
 		cp "$<" "$@"
 
-sprites := $(wildcard resources/sprites/*.spd)
-
-seq := $(patsubst %.seq,%.sex,$(wildcard resources/seq/*.seq))
-
-ntsc_music := $(patsubst %.sng,%.sid,$(wildcard resources/audio/*.sng))
-
-pal_music := $(patsubst %.sid,%.sidp,$(ntsc_music))
-
-music := $(ntsc_music) $(pal_music)
-
-sounds := $(sort $(patsubst %.ins,%.snd,$(wildcard resources/audio/*.ins)))
-
-sound_sizes=$(foreach sound,$(sounds),$(shell stat -c '%s' "$(sound)"))
-
-charset := $(wildcard resources/charset/*.s)
-
-# Decided to use OCP since Multipaint supports it natively.
-# I wanted to use PNGs since they are well supported, but
-# I prefer having a simple toolset instead.
-bitmaps := $(patsubst %.ocp,%.ocx,$(wildcard resources/bitmap/*.ocp))
-
-code := $(wildcard code/*.c) $(wildcard code/*_asm.s) resources/sprites/canada.c
-
 build/machismo.d64: build/empty.d64 build/machismo.prg $(music) $(patsubst %.ocx,%.ocb,$(bitmaps)) $(patsubst %.ocx,%.ocs,$(bitmaps)) $(sprites) $(seq) resources/audio/canada.snz build/.sentinel
 		# Writes all files that have changed.
 		c1541 -attach $@ $(foreach content,$(filter-out $<,$?), -delete $(notdir $(content)) -write $(content) $(notdir $(content)))
@@ -126,6 +130,9 @@ resources/audio/canada.snz: $(sounds)
 			size_total=$$((size_total + each))
 		done
 		printf "$$sound_header" | cat - $(sounds) > "$@"
+
+%.i: %.c
+		$(CC) -E $(CCFLAGS) -o "$@" "$<"
 
 %.snd: %.ins
 		ins2snd2 "$<" "$@" -b
