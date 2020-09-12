@@ -32,8 +32,12 @@ docker/
 /tools/exo/*/deps
 *.yy.c
 asm.tab.*
-exobasic
-exomizer
-testrun
+b2membuf*
+exoraw*
+exobasic*
+exomizer*
+testrun*
 sfxdecr*
 *.exo
+
+*~

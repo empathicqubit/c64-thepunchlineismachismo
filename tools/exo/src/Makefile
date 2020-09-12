@@ -28,46 +28,46 @@ ALL_OBJS = $(EXO_OBJS) $(RAW_OBJS) $(BAS_OBJS) $(SHARED_OBJS)
 build: $(MAKEFILE) exomizer exobasic
 
 exomizer: deps $(EXO_OBJS) $(SHARED_OBJS)
-	@echo "Linking $@"
-	@$(CC) $(LDFLAGS) -o $@ $(EXO_OBJS) $(SHARED_OBJS)
+	echo "Linking $@"
+	$(CC) $(LDFLAGS) -o $@ $(EXO_OBJS) $(SHARED_OBJS)
 
 exoraw: deps $(RAW_OBJS) $(SHARED_OBJS)
-	@echo "Linking $@"
-	@$(CC) $(LDFLAGS) -o $@ $(RAW_OBJS) $(SHARED_OBJS)
+	echo "Linking $@"
+	$(CC) $(LDFLAGS) -o $@ $(RAW_OBJS) $(SHARED_OBJS)
 
 exobasic: deps $(BAS_OBJS) $(SHARED_OBJS)
-	@echo "Linking $@"
-	@$(CC) $(LDFLAGS) -o $@ $(BAS_OBJS) $(SHARED_OBJS)
+	echo "Linking $@"
+	$(CC) $(LDFLAGS) -o $@ $(BAS_OBJS) $(SHARED_OBJS)
 
 clean:
-	@echo "Cleaning project"
+	echo "Cleaning project"
 	-@$(RM) $(EXO_OBJS) $(RAW_OBJS) $(BAS_OBJS) $(SHARED_OBJS)
 	-@$(RM) b2membuf.o b2membuf b2membuf.exe sfxdecr sfxdecr.c deps
 	-@$(RM) exomizer exoraw exobasic exomizer.exe exoraw.exe exobasic.exe
 
 
 asm.tab.h asm.tab.c: asm.y
-	bison -t -d asm.y
+	bison -t -d asm.y || win_bison -t -d asm.y
 
 lex.yy.c: asm.yy
-	flex -B asm.yy
+	flex -B asm.yy || win_flex -B asm.yy
 
 sfxdecr.c: sfxdecr b2membuf
-	@./b2membuf sfxdecr >sfxdecr.c
+	./b2membuf sfxdecr >sfxdecr.c
 
 sfxdecr: sfxdecr.s exoraw
-	@echo "Compressing $<"
-	@./exoraw -q sfxdecr.s -o sfxdecr
+	echo "Compressing $<"
+	./exoraw -q sfxdecr.s -o sfxdecr
 
 -include deps
 
 deps: $(wildcard *.h) asm.tab.h
-	@echo "Generating dependencies"
-	@$(CC) -MM $(wildcard *.c) >$@
+	echo "Generating dependencies"
+	$(CC) -MM $(wildcard *.c) >$@
 
 %.o:	%.c
-	@echo "Compiling $<"
-	@$(CC) -c $(CFLAGS) $(CPPFLAGS) -o $@ $<
+	echo "Compiling $<"
+	$(CC) -c $(CFLAGS) $(CPPFLAGS) -o $@ $<
 
 %:	%.o
-	@$(CC) $(LDFLAGS) $< -o $@
+	$(CC) $(LDFLAGS) $< -o $@

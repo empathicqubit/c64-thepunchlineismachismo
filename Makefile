@@ -154,7 +154,7 @@ build/exomizer: tools/exo/src/exomizer build/.sentinel
 
 tools/exo/src/exomizer: tools/exo/src/Makefile
 		cd "$(dir $<)"
-		make -j$$(nproc)
+		make CC=gcc
 
 %.ocb: build/exomizer %.ocp
 		dd "if=$(filter-out $<,$^)" skip=2 bs=1 count=8000 > "$@.tmp"
