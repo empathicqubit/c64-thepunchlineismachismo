@@ -82,6 +82,7 @@ clean:
 		find code -iname '*.o' -exec rm -rf {} \;
 		rm -rf $(music)
 		rm -rf $(bitmaps)
+		rm -rf $(intermediates)
 		rm -rf *.ocb *.ocs
 		rm -rf resources/audio/*.snz
 		rm -rf $(sounds)

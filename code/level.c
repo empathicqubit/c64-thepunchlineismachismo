@@ -213,9 +213,8 @@ unsigned char move_to_screen(unsigned char screen_idx, unsigned char guy_idx) {
 unsigned char update(void) {
     unsigned char i, j, err;
     unsigned int action_time, status_time;
-    char_state* other;
+    char_state *other, *me;
     char_action_flag action_flags;
-    char_state* me;
 
     level_screen* screen = state->screens[state->screen_index];
     bool my_last_resort = false;
