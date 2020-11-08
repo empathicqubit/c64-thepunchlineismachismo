@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 build/
 resources/generated/
 node_modules/
@@ -41,3 +42,47 @@ sfxdecr*
 *.exo
 
 *~
+=======
+build/
+resources/generated/
+node_modules/
+.vscode/*
+!.vscode/launch.json
+!.vscode/c_cpp_properties.json
+!.vscode/settings.json
+*.o
+code/*.s
+*.i
+resources/*/*.s
+!*_asm.s
+*.sprite.*
+/*.d81
+/*.prg
+*.out
+*.lbl
+*.pem
+docker/
+
+# Resources
+*.sex
+*.ocs
+*.ocb
+*.ocx
+*.sid
+*.snd
+*.snz
+*.sidp
+
+# Exomizer
+*.os*
+/tools/exo/*/*.prg
+/tools/exo/*/deps
+*.yy.c
+asm.tab.*
+exobasic
+exomizer
+testrun
+sfxdecr*
+*.exo
+
+/memory.js

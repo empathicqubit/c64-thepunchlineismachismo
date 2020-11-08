@@ -38,10 +38,7 @@ unsigned char sid_play_sound(unsigned char* snz_pointer, unsigned char sound_idx
 
 unsigned char sid_load (unsigned char* filename) {
     unsigned char* buffer;
-    unsigned int i;
-    int c;
     bool pal;
-    FILE* fp;
 
     pal = get_tv();
 
@@ -55,15 +52,9 @@ unsigned char sid_load (unsigned char* filename) {
         buffer = filename;
     }
 
-    fp = fopen(buffer, "rb");
-
-    i = 0;
-    c = -1;
-    while((c = fgetc(fp)) != -1) {
-        ((unsigned char *)SID_START)[i++] = (unsigned char)c;
-    }
-
-    fclose(fp);
+    cbm_k_setlfs(utils_get_unused_lfn(), 8, 1);
+    cbm_k_setnam(buffer);
+    cbm_k_load(0, 0);
 
     sid_init();
 

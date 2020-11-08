@@ -275,16 +275,16 @@ unsigned char update(void) {
                             (action_flags & CHAR_ACTION_DIRECTION_RIGHTLEFT)
                             // Attacker facing left
                             ? (
-                                (me->path_x < other->path_x + 50)
+                                (me->path_x < other->path_x + 60)
                                 && (me->path_x >= other->path_x)
                             )
                             // Attacker facing right
                             : (
-                                (me->path_x + 50 > other->path_x)
-                                && (me->path_x + 50 < other->path_x + 60)
+                                (me->path_x + 60 > other->path_x)
+                                && (me->path_x + 60 < other->path_x + 60)
                             )
                         )
-                        && (me->path_y > other->path_y - 25)
+                        && (other->path_y >= 25 ? me->path_y > other->path_y - 25 : true)
                         && (me->path_y < other->path_y + 25)
                     ) {
                         other->hitpoints--;

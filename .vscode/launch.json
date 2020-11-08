@@ -4,13 +4,37 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
    {
        "type": "cc65-vice",
        "request": "launch",
        "name": "CC65 Vice Launch",
        "buildCwd": "${workspaceFolder}",
        "buildCommand": "make OPTIONS=mapfile,labelfile,debugfile",
-       "program": "${workspaceFolder}/build/machismo.d64",
+       "preprocessCommand": "make OPTIONS=mapfile,labelfile,debugfile preprocess-only",
+       "stopOnEntry": true,
+       "viceArgs": [
+           "-model",
+           "ntsc"
+       ]
+   },
+   {
+       "type": "cc65-vice",
+       "request": "attach",
+       "name": "CC65 Vice Launch (Attach)",
+       "buildCwd": "${workspaceFolder}",
+       "mapFile": "${workspaceFolder}/build/machismo.map",
+       "debugFile": "${workspaceFolder}/build/machismo.dbg",
+       "attachPort": 6502,
+       "stopOnEntry": true
+   },
+   {
+       "type": "cc65-vice",
+       "request": "launch",
+       "name": "CC65 Vice Launch (Debug Extension)",
+       "buildCwd": "${workspaceFolder}",
+       "buildCommand": "make OPTIONS=mapfile,labelfile,debugfile",
+       "debugServer": 4711,
        "stopOnEntry": true,
        "viceArgs": [
            "-model", "ntsc",
@@ -19,17 +43,13 @@
    },
    {
        "type": "cc65-vice",
-       "request": "launch",
-       "name": "CC65 Vice Launch (Debug Extension)",
+       "request": "attach",
+       "name": "CC65 Vice Launch (Debug Extension+Attach)",
        "buildCwd": "${workspaceFolder}",
-       "buildCommand": "make OPTIONS=mapfile,labelfile,debugfile",
+       "attachPort": 6600,
        "program": "${workspaceFolder}/build/machismo.d64",
        "debugServer": 4711,
-       "stopOnEntry": true,
-       "viceArgs": [
-           "-model", "ntsc",
-           "+autostart-warp", "+warp"
-       ]
+       "stopOnEntry": true
    }
     ]
 }

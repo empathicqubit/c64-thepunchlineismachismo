@@ -20,7 +20,7 @@ endif
 
 CFLAGS=-O -Osr -t c64 -C "$(LINKER_CFG)"
 DFLAGS?=-Wa "--cpu" -Wa "6502X" -Wa "-DSID_START=\$$$(SID_HIGHBYTE)00" -Wc "-DSID_START=0x$(SID_HIGHBYTE)00"  -Wc "-DSID_SIZE=$$sidsize" -Wc "-DBITMAP_START=0x$(BITMAP_START)" -Wc "-DSCREEN_START=0x$(SCREEN_START)" -Wc "-DCHARACTER_START=0x$(CHARACTER_START)" -Wc "-DSPRITE_START=0x$(SPRITE_START)"
-DBGFLAGS?=-g -Wl "-Lnbuild/machismo.lbl" -vm -Wl "--mapfile,build/machismo.map" -Wl "--dbgfile,build/machismo.dbg"
+DBGFLAGS?=-g -Wc -DDEBUG=0 -Wl "-Lnbuild/machismo.lbl" -vm -Wl "--mapfile,build/machismo.map" -Wl "--dbgfile,build/machismo.dbg"
 
 CCFLAGS=$(CFLAGS) $(DFLAGS) $(DBGFLAGS)
 
@@ -94,6 +94,38 @@ cp-emu: /mnt/chromeos/removable/Chromebook/user/roms/$(DISKIMAGE)
 
 cp-c64: /mnt/chromeos/removable/C64/$(DISKIMAGE)
 
+memory: memory.js
+
+memory.js: memory.html
+		cat > "memory.js" << "JAVASCRIPT"
+		window.memory = {
+			sid: {
+				address: "0x$(SID_HIGHBYTE)00",
+				size: 0x$(SCREEN_START) - 0x$(SID_HIGHBYTE)00
+			},
+			bit: {
+				address: "0x$(BITMAP_START)",
+				size: 0xffff - 0x$(BITMAP_START)
+			},
+			sprite: {
+				address: "0x$(SPRITE_START)",
+				size: 0x$(CHARACTER_START) - 0x$(SPRITE_START)
+			},
+			screen: {
+				address: "0x$(SCREEN_START)",
+				size: 0x$(SPRITE_START) - 0x$(SCREEN_START)
+			},
+			chara: {
+				address: "0x$(CHARACTER_START)",
+				size: 0x$(BITMAP_START) - 0x$(CHARACTER_START)
+			},
+			codeStack: {
+				address: "0x0401",
+				size: 0x$(SID_HIGHBYTE)00 - 0x0401
+			},
+		};
+		JAVASCRIPT
+
 /mnt/chromeos/removable/Chromebook/user/roms/machismo.d64: build/$(DISKIMAGE)
 		cp "$<" "$@"
 
@@ -110,7 +142,7 @@ build/empty.d64: build/.sentinel
 
 build/machismo.prg: build/exomizer build/precrunch.prg
 ifdef SFX
-	"$<" sfx 0x0401 -x3 "$(filter-out $<,$^)" -o "$@"
+	"$<" sfx 0x03d3 -x3 "$(filter-out $<,$^)" -o "$@"
 else
 	cp "$(filter-out $<,$^)" "$@"
 endif
@@ -120,7 +152,7 @@ build/precrunch.prg: build/.sentinel $(LINKER_CFG) $(code) resources/text.s $(ch
 		echo "SID SIZE $$sidsize"
 
 		$(CC) $(CCFLAGS) -o "$@" $(filter %.c %.s,$^)
-		$(CC) $(CCFLAGS) -S $(filter %.c,$^)
+		#$(CC) $(CCFLAGS) -S $(filter %.c,$^)
 
 resources/audio/canada.snz: $(sounds)
 		sound_header="\x$$(printf '%x' $(words $(sounds)))"
@@ -141,13 +173,17 @@ resources/audio/canada.snz: $(sounds)
 %.sidp: %.sng
 		# PAL
 		gt2reloc "$<" "$@.bin" $(GT2RELOC_OPTS)
-		mv "$@.bin" "$@"
+		echo -n -e '\x00\x$(SID_HIGHBYTE)' > "$@"
+		cat "$@.bin" >> "$@"
+		rm "$@.bin"
 
 %.sid: %.sng
 		# You need to set the correct extension otherwise the output format will be SIDPlay!!!
 		# NTSC
 		gt2reloc "$<" "$@.bin" $(GT2RELOC_OPTS) -G424
-		mv "$@.bin" "$@"
+		echo -n -e '\x00\x$(SID_HIGHBYTE)' > "$@"
+		cat "$@.bin" >> "$@"
+		rm "$@.bin"
 
 build/exomizer: tools/exo/src/exomizer build/.sentinel
 		cp "$<" "$@"

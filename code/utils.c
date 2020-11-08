@@ -93,6 +93,7 @@ void __fastcall__ screen_init (bool clear) {
         clrscr();
 
         bgcolor(COLOR_BLACK);
+        bordercolor(COLOR_BLACK);
     }
 }
 

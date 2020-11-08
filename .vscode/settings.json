@@ -1,0 +1,16 @@
+{
+    "workbench.colorCustomizations": {
+
+        "activityBar.background": "#040", 
+    },
+    "files.associations": {
+        "cstdlib": "c",
+        "*.tcc": "c",
+        "chrono": "c",
+        "condition_variable": "c",
+        "mutex": "c",
+        "sstream": "c",
+        "thread": "c",
+        "typeinfo": "c"
+    }
+}

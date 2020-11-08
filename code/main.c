@@ -15,8 +15,6 @@
 #include "level.h"
 #include "seq.h"
 
-#define DEBUG 1
-
 void main_raster_irq(void) {
     sid_play_frame();
 }
