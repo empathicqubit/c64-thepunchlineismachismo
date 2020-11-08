@@ -1,48 +1,3 @@
-<<<<<<< HEAD
-build/
-resources/generated/
-node_modules/
-.vscode/*
-!.vscode/launch.json
-*.o
-code/*.s
-*.i
-resources/*/*.s
-!*_asm.s
-*.sprite.*
-/*.d81
-/*.prg
-*.out
-*.lbl
-*.pem
-docker/
-
-# Resources
-*.sex
-*.ocs
-*.ocb
-*.ocx
-*.sid
-*.snd
-*.snz
-*.sidp
-
-# Exomizer
-*.os*
-/tools/exo/*/*.prg
-/tools/exo/*/deps
-*.yy.c
-asm.tab.*
-b2membuf*
-exoraw*
-exobasic*
-exomizer*
-testrun*
-sfxdecr*
-*.exo
-
-*~
-=======
 build/
 resources/generated/
 node_modules/
@@ -79,9 +34,11 @@ docker/
 /tools/exo/*/deps
 *.yy.c
 asm.tab.*
-exobasic
-exomizer
-testrun
+b2membuf*
+exoraw*
+exobasic*
+exomizer*
+testrun*
 sfxdecr*
 *.exo
 
