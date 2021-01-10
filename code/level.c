@@ -18,6 +18,7 @@
 #include "char_state.h"
 
 #define MAX_SCREEN_CHARACTERS 16
+#define MAX_SCREEN_EXITS 4
 #define MAX_SCREENS 16
 
 #define MAX_PATH_X (SCREEN_SPRITE_BORDER_WIDTH - 40)
@@ -25,11 +26,44 @@
 
 void debug_marker() {}
 
+enum {
+    LEVEL_OBJECT_SOLID_BACK  = 0x01,
+    LEVEL_OBJECT_SOLID_FRONT = 0x02,
+    LEVEL_OBJECT_SOLID_LEFT  = 0x04,
+    LEVEL_OBJECT_SOLID_RIGHT = 0x08,
+
+    LEVEL_OBJECT_HAS_SPRITE  = 0x10,
+};
+typedef unsigned char level_object_flag;
+
+typedef struct level_exit level_exit;
+struct level_object {
+    /** Footprint dimensions */
+    unsigned int path_x;
+    unsigned int width;
+    unsigned char path_y;
+    unsigned char height;
+
+    level_object_flag flags;
+
+    /** The sprite, which is displayed aligned to the front-left corner.
+      * This is displayed only if the HAS_SPRITE flag is set.
+      */
+    unsigned char default_sprite;
+
+    /** The screen index to jump to when encountering this object on a non-solid side.
+      */
+    unsigned char screen_index;
+};
+
 typedef struct level_screen level_screen;
 struct level_screen {
     char_state* characters[MAX_SCREEN_CHARACTERS];
     unsigned char* bg_data;
     unsigned int bg_length;
+    signed char left_exit; // <0 is no exit
+    signed char right_exit; // <0 is no exit
+    level_exit* exits[MAX_SCREEN_EXITS];
 };
 
 typedef struct level_state level_state;
@@ -150,6 +184,11 @@ unsigned char process_cpu_input(void) {
                     me->action_flags &= ~CHAR_ACTION_DIRECTION_MASK;
                 }
             }
+            else if(rand() % (FRAMES_PER_SEC*10) == 0 && !(me->action_flags & CHAR_ACTION_ATTACKING)) {
+                me->movement_speed = 2;
+                me->action_flags |= CHAR_ACTION_ATTACKING;
+                me->action_start = now;
+            }
         }
         else {
             continue;
@@ -188,20 +227,21 @@ unsigned char level_screen_init_bg(unsigned char* bg, unsigned int fullsize) {
 
 
 unsigned char move_to_screen(unsigned char screen_idx, unsigned char guy_idx) {
-    unsigned char err;
+    unsigned char err, i, old_screen_idx;
     level_screen* dest_screen = state->screens[screen_idx];
 
     if(screen_idx > MAX_SCREEN_CHARACTERS || !dest_screen) {
         return EXIT_FAILURE;
     }
 
-    if(err = level_screen_delete_character(state->screens[state->screen_index], guy_idx)) {
+    old_screen_idx = state->screen_index;
+    state->screen_index = screen_idx;
+
+    if((err = level_screen_delete_character(state->screens[old_screen_idx], guy_idx))) {
         return err;
     }
 
-    state->screen_index = screen_idx;
-
-    if(err = level_screen_add_character(dest_screen, state->guy)) {
+    if((err = level_screen_add_character(dest_screen, state->guy))) {
         return err;
     }
 
@@ -214,6 +254,7 @@ unsigned char update(void) {
     unsigned char i, j, err;
     unsigned int action_time, status_time;
     char_state *other, *me;
+    char_type char_type;
     char_action_flag action_flags;
 
     level_screen* screen = state->screens[state->screen_index];
@@ -225,6 +266,7 @@ unsigned char update(void) {
         if(!me) continue;
 
         action_flags = me->action_flags;
+        char_type = me->char_type;
 
         // Reconcile flags and last_flags
         if(action_flags != me->last_action_flags) {
@@ -262,15 +304,71 @@ unsigned char update(void) {
         }
 
         if(action_flags & CHAR_ACTION_ATTACKING) {
-            if(action_time > (FRAMES_PER_SEC/6) && action_time < (FRAMES_PER_SEC/3)) {
-                for(j = 0; j < MAX_SCREEN_CHARACTERS; j++) {
-                    other = screen->characters[j];
-                    if(!other || other == me) {
-                        continue;
+            if(char_type == CHAR_TYPE_GUY) {
+                if(action_time > (FRAMES_PER_SEC/6) && action_time < (FRAMES_PER_SEC/3)) {
+                    for(j = 0; j < MAX_SCREEN_CHARACTERS; j++) {
+                        other = screen->characters[j];
+                        if(!other || other == me) {
+                            continue;
+                        }
+
+                        if(
+                            !(other->action_flags & CHAR_ACTION_DYING) &&
+                            !(other->status_flags & CHAR_STATUS_INVINCIBLE)
+                            && (
+                                (action_flags & CHAR_ACTION_DIRECTION_RIGHTLEFT)
+                                // Attacker facing left
+                                ? (
+                                    (me->path_x < other->path_x + 60)
+                                    && (me->path_x >= other->path_x)
+                                )
+                                // Attacker facing right
+                                : (
+                                    (me->path_x + 60 > other->path_x)
+                                    && (me->path_x + 60 < other->path_x + 60)
+                                )
+                            )
+                            && (me->path_y + 25 > other->path_y)
+                            && (me->path_y < other->path_y + 25)
+                        ) {
+                            if(other->action_flags & CHAR_ACTION_ATTACKING) {
+                                me->action_flags &= ~CHAR_ACTION_ATTACKING;
+                                other->action_flags &= ~CHAR_ACTION_ATTACKING;
+
+                                other->status_start =
+                                    me->status_start = now;
+
+                                other->status_flags |= CHAR_STATUS_INVINCIBLE;
+                                me->status_flags |= CHAR_STATUS_INVINCIBLE;
+
+                                break;
+                            }
+
+                            other->hitpoints--;
+                            other->status_flags |= CHAR_STATUS_INVINCIBLE;
+
+                            if(!other->hitpoints) {
+                                other->action_flags &= ~CHAR_ACTION_MASK;
+                                other->action_flags |= CHAR_ACTION_DYING;
+                            }
+                        }
                     }
+                }
+                else if(action_time > (FRAMES_PER_SEC/2)) {
+                    me->action_flags &= ~CHAR_ACTION_ATTACKING;
+                }
+            }
+            else if(char_type == CHAR_TYPE_MOOSE) {
+                if(action_time > (FRAMES_PER_SEC*3)) {
+                    me->movement_speed = 1;
+                    me->action_flags &= ~CHAR_ACTION_ATTACKING;
+                }
+                else {
+                    other = state->guy;
 
                     if(
-                        !(other->action_flags & CHAR_ACTION_DYING) && !(other->status_flags & CHAR_STATUS_INVINCIBLE)
+                        !(other->action_flags & CHAR_ACTION_DYING) &&
+                        !(other->status_flags & CHAR_STATUS_INVINCIBLE)
                         && (
                             (action_flags & CHAR_ACTION_DIRECTION_RIGHTLEFT)
                             // Attacker facing left
@@ -284,7 +382,7 @@ unsigned char update(void) {
                                 && (me->path_x + 60 < other->path_x + 60)
                             )
                         )
-                        && (other->path_y >= 25 ? me->path_y > other->path_y - 25 : true)
+                        && (me->path_y + 25 > other->path_y)
                         && (me->path_y < other->path_y + 25)
                     ) {
                         other->hitpoints--;
@@ -296,9 +394,6 @@ unsigned char update(void) {
                         }
                     }
                 }
-            }
-            else if(action_time > (FRAMES_PER_SEC/2)) {
-                me->action_flags &= ~CHAR_ACTION_ATTACKING;
             }
         }
 
@@ -364,7 +459,7 @@ unsigned char update(void) {
 unsigned char render() {
     unsigned char i, sheet_idx, action_flags, err;
     bool animate = true;
-    sprite_sequence* selected_sprite;
+    sprite_sequence* selected_sequence;
     char_sprite_group* selected_char;
     char_state *me;
     unsigned int animation_time;
@@ -380,7 +475,10 @@ unsigned char render() {
     for(i = 0; i < MAX_SCREEN_CHARACTERS; i++) {
         me = screen->characters[i];
 
-        if(!me) continue;
+        if(!me) {
+            sprite_hide(i);
+            continue;
+        }
 
         selected_char = SPRITES[me->char_type];
 
@@ -390,54 +488,54 @@ unsigned char render() {
 
         if(action_flags & CHAR_ACTION_DIRECTION_RIGHTLEFT) {
             if(me->status_flags & CHAR_STATUS_INVINCIBLE) {
-                selected_sprite = selected_char->oof_left;
+                selected_sequence = selected_char->oof_left;
                 animation_time = now - me->status_start;
                 after_finish = selected_char->walk_left;
             }
             else if(action_flags & CHAR_ACTION_ATTACKING) {
-                selected_sprite = selected_char->attack_left;
+                selected_sequence = selected_char->attack_left;
             }
             else if(action_flags & CHAR_ACTION_MOVING_MASK) {
-                selected_sprite = selected_char->walk_left;
+                selected_sequence = selected_char->walk_left;
             }
             else {
-                selected_sprite = selected_char->walk_left;
+                selected_sequence = selected_char->walk_left;
                 animate = false;
             }
         }
         else {
             if(me->status_flags & CHAR_STATUS_INVINCIBLE) {
-                selected_sprite = selected_char->oof_right;
+                selected_sequence = selected_char->oof_right;
                 animation_time = now - me->status_start;
                 after_finish = selected_char->walk_right;
             }
             else if(action_flags & CHAR_ACTION_ATTACKING) {
-                selected_sprite = selected_char->attack_right;
+                selected_sequence = selected_char->attack_right;
             }
             else if(action_flags & CHAR_ACTION_MOVING_MASK) {
-                selected_sprite = selected_char->walk_right;
+                selected_sequence = selected_char->walk_right;
             }
             else {
-                selected_sprite = selected_char->walk_right;
+                selected_sequence = selected_char->walk_right;
                 animate = false;
             }
         }
 
         // In case we don't have a sprite defined for this
         // action, default to an obviously wrong sprite.
-        if(!selected_sprite) {
-            selected_sprite = SPRITES[CHAR_TYPE_GUY]->neutral;
+        if(!selected_sequence) {
+            selected_sequence = SPRITES[CHAR_TYPE_GUY]->neutral;
         }
 
         if(!animate) {
-            sheet_idx = selected_sprite->start_index;
+            sheet_idx = selected_sequence->frames[0].indices[0];
         }
         else {
             if(after_finish) {
-                sheet_idx = spritesheet_animation_next(animation_time, selected_sprite->frame_duration, selected_sprite->start_index, selected_sprite->length, false, after_finish->start_index);
+                sheet_idx = spritesheet_animation_next(animation_time, selected_sequence->frame_duration, selected_sequence->frames[0].indices[0], selected_sequence->length, false, after_finish->frames[0].indices[0]);
             }
             else {
-                sheet_idx = spritesheet_animation_next(animation_time, selected_sprite->frame_duration, selected_sprite->start_index, selected_sprite->length, true, NULL);
+                sheet_idx = spritesheet_animation_next(animation_time, selected_sequence->frame_duration, selected_sequence->frames[0].indices[0], selected_sequence->length, true, NULL);
             }
         }
 
@@ -579,7 +677,7 @@ unsigned char play_level (void) {
 
     puts("beebifying hair spikes...");
 
-    if(err = sid_load("empty.sid")) {
+    if(err = sid_load("intro.sid")) {
         printf("sid load error: %x\n", err);
         return EXIT_FAILURE;
     }
@@ -600,7 +698,7 @@ unsigned char play_level (void) {
 
     setup_irq_handler(&level_irq_handler);
 
-    bgcolor(COLOR_LIGHTBLUE);
+    bgcolor(COLOR_BLUE);
     bordercolor(COLOR_GREEN);
 
     while (true)

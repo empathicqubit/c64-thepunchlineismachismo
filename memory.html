@@ -1,0 +1,152 @@
+<html>
+    <head>
+<style type="text/css">
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+#chart {
+    display: flex;
+    background-color: #fff;
+    color: #000;
+    padding: 1em;
+    padding-top: 10em;
+    height: 50vh;
+}
+
+#chart > div {
+    border-radius: .2em 0 0 .2em;
+    border: .2em solid rgba(0, 0, 0, .3);
+    padding: .2em;
+    margin-left: -.2em;
+    min-width: 0;
+    min-height: 5em;
+    position: relative;
+}
+
+#chart .inner {
+    position: absolute;
+    width: 4em;
+    border-left: .3em dashed #555;
+}
+
+#chart :nth-child(2n) .inner {
+    top: -10em;
+    height: 10em;
+}
+
+#chart :nth-child(2n+1) .inner {
+    top: -4.5em;
+    height: 4.5em;
+}
+
+#chart :last-child {
+    border-radius: 0 1em 1em 0;
+}
+
+#code-stack {
+    background-color: #005;
+    color: #005;
+}
+
+#sid {
+    background-color: #050;
+    color: #050;
+}
+
+#screen {
+    background-color: #505;
+    color: #505;
+}
+
+#sprite {
+    background-color: #500;
+    color: #500;
+}
+
+#chara {
+    background-color: #555;
+    color: #555;
+}
+
+#bit {
+    background-color: #000;
+    color: #000;
+}
+
+#free {
+    background-color: #990;
+    color: #990;
+}
+</style>
+    </head>
+    <body>
+        <div id="chart">
+            <div id="free">
+                <div class="inner">
+                    Free
+                </div>
+            </div>
+            <div id="code-stack">
+                <div class="inner">
+                    Code<br />
+                    <div class="address"></div>
+                </div>
+            </div>
+            <div id="sid">
+                <div class="inner">
+                    SID<br />
+                    <div class="address"></div>
+                </div>
+            </div>
+            <div id="screen">
+                <div class="inner">
+                    Screen<br />
+                    <div class="address"></div>
+                </div>
+            </div>
+            <div id="sprite">
+                <div class="inner">
+                    Sprite<br />
+                    <div class="address"></div>
+                </div>
+            </div>
+            <div id="chara">
+                <div class="inner">
+                    Character map<br />
+                    <div class="address"></div>
+                </div>
+            </div>
+            <div id="bit">
+                <div class="inner">
+                    Bitmap<br />
+                    <div class="address"></div>
+                </div>
+            </div>
+        </div>
+        <script type="text/javascript" src="memory.js">
+        </script>
+        <script>
+            document.querySelector('#code-stack').style.flex = memory.codeStack.size;
+            document.querySelector('#code-stack .address').textContent = `${memory.codeStack.address} (${memory.codeStack.size}B)`;
+
+            document.querySelector('#sid').style.flex = memory.sid.size;
+            document.querySelector('#sid .address').textContent = `${memory.sid.address} (${memory.sid.size}B)`;
+
+            document.querySelector('#screen').style.flex = memory.screen.size;
+            document.querySelector('#screen .address').textContent = `${memory.screen.address} (${memory.screen.size}B)`;
+
+            document.querySelector('#sprite').style.flex = memory.sprite.size;
+            document.querySelector('#sprite .address').textContent = `${memory.sprite.address} (${memory.sprite.size / 64} spr)`;
+
+            document.querySelector('#chara').style.flex = memory.chara.size;
+            document.querySelector('#chara .address').textContent = `${memory.chara.address} (${memory.chara.size}B)`;
+
+            document.querySelector('#bit').style.flex = memory.bit.size;
+            document.querySelector('#bit .address').textContent = `${memory.bit.address} (${memory.bit.size}B)`;
+        </script>
+    </body>
+</html>

@@ -20,7 +20,7 @@ endif
 
 CFLAGS=-O -Osr -t c64 -C "$(LINKER_CFG)"
 DFLAGS?=-Wa "--cpu" -Wa "6502X" -Wa "-DSID_START=\$$$(SID_HIGHBYTE)00" -Wc "-DSID_START=0x$(SID_HIGHBYTE)00"  -Wc "-DSID_SIZE=$$sidsize" -Wc "-DBITMAP_START=0x$(BITMAP_START)" -Wc "-DSCREEN_START=0x$(SCREEN_START)" -Wc "-DCHARACTER_START=0x$(CHARACTER_START)" -Wc "-DSPRITE_START=0x$(SPRITE_START)"
-DBGFLAGS?=-g -Wc -DDEBUG=0 -Wl "-Lnbuild/machismo.lbl" -vm -Wl "--mapfile,build/machismo.map" -Wl "--dbgfile,build/machismo.dbg"
+DBGFLAGS?=-g -Wc -DDEBUG=1 -Wl "-Lnbuild/machismo.lbl" -vm -Wl "--mapfile,build/machismo.map" -Wl "--dbgfile,build/machismo.dbg"
 
 CCFLAGS=$(CFLAGS) $(DFLAGS) $(DBGFLAGS)
 
@@ -51,7 +51,7 @@ charset := $(wildcard resources/charset/*.s)
 # I prefer having a simple toolset instead.
 bitmaps := $(patsubst %.ocp,%.ocx,$(wildcard resources/bitmap/*.ocp))
 
-code := $(wildcard code/*.c) $(wildcard code/*_asm.s) resources/sprites/canada.c
+code := $(wildcard code/*.c) $(wildcard code/*_asm.s) resources/sprites/canada.c resources/sprites/animdata.s
 
 intermediates := $(patsubst %.c,%.i,$(filter %.c,$(code)))
 
@@ -152,7 +152,7 @@ build/precrunch.prg: build/.sentinel $(LINKER_CFG) $(code) resources/text.s $(ch
 		echo "SID SIZE $$sidsize"
 
 		$(CC) $(CCFLAGS) -o "$@" $(filter %.c %.s,$^)
-		#$(CC) $(CCFLAGS) -S $(filter %.c,$^)
+#$(CC) $(CCFLAGS) -S $(filter %.c,$^)
 
 resources/audio/canada.snz: $(sounds)
 		sound_header="\x$$(printf '%x' $(words $(sounds)))"

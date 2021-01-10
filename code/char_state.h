@@ -1,5 +1,6 @@
 #include <joystick.h>
 #include "c64.h"
+#include "../resources/sprites/canada.h"
 enum {
     CHAR_TYPE_GUY = 0,
     CHAR_TYPE_MOOSE = 1,
@@ -10,13 +11,13 @@ enum {
     // 0 is up, 1 is down
     CHAR_ACTION_DIRECTION_UPDOWN = 0x01,
     // 0 is right, 1 is left
-    CHAR_ACTION_DIRECTION_RIGHTLEFT = 0x02, 
+    CHAR_ACTION_DIRECTION_RIGHTLEFT = 0x02,
     CHAR_ACTION_DIRECTION_MASK = 0x03,
 
     // Are we moving along the x axis?
     CHAR_ACTION_MOVING_RIGHTLEFT = 0x04,
     // Are we moving along the y axis?
-    CHAR_ACTION_MOVING_UPDOWN = 0x08, 
+    CHAR_ACTION_MOVING_UPDOWN = 0x08,
     CHAR_ACTION_MOVING_MASK = 0x0C,
 
     CHAR_ACTION_ATTACKING = JOY_BTN_1_MASK,    // 0x10
@@ -49,7 +50,7 @@ struct char_state {
     unsigned char path_y;
     unsigned char movement_speed; // pixels per jiffy
 
-    unsigned char default_sprite; // The default sprite in the sheet.
+    sprite_sequence *default_sprite; // The default sprite in the sheet.
 
     unsigned char hitpoints; // How many hits until the character dies
     unsigned char attackpoints; // How many hits a character deals. Most of the time this is 1.

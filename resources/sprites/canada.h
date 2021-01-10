@@ -1,9 +1,19 @@
+#ifndef __CANADA_H__
+#define __CANADA_H__
+
+typedef struct sprite_grid sprite_grid;
+struct sprite_grid {
+    unsigned char width;
+    unsigned char height;
+    unsigned char indices[8];
+};
+
 typedef struct sprite_sequence sprite_sequence;
 struct sprite_sequence {
-    unsigned char start_index;
     unsigned char length;
     // Time for each frame in jiffies
     unsigned char frame_duration;
+    sprite_grid frames[8];
 };
 
 typedef struct char_sprite_group char_sprite_group;
@@ -22,3 +32,4 @@ struct char_sprite_group {
 
 // Index is CHAR_TYPE enum. See level.h
 extern char_sprite_group *SPRITES[];
+#endif

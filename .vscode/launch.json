@@ -25,7 +25,7 @@
        "buildCwd": "${workspaceFolder}",
        "mapFile": "${workspaceFolder}/build/machismo.map",
        "debugFile": "${workspaceFolder}/build/machismo.dbg",
-       "attachPort": 6502,
+       "attachPort": 6565,
        "stopOnEntry": true
    },
    {
@@ -36,9 +36,11 @@
        "buildCommand": "make OPTIONS=mapfile,labelfile,debugfile",
        "debugServer": 4711,
        "stopOnEntry": true,
+       "stopOnExit": true,
        "viceArgs": [
            "-model", "ntsc",
-           "+autostart-warp", "+warp"
+           "+autostart-warp", "+warp",
+           "-VICIIborders", "0"
        ]
    },
    {
@@ -46,7 +48,7 @@
        "request": "attach",
        "name": "CC65 Vice Launch (Debug Extension+Attach)",
        "buildCwd": "${workspaceFolder}",
-       "attachPort": 6600,
+       "attachPort": 24987,
        "program": "${workspaceFolder}/build/machismo.d64",
        "debugServer": 4711,
        "stopOnEntry": true

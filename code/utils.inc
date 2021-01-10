@@ -1,0 +1,1 @@
+FRAMES_PER_SEC = 50

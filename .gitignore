@@ -28,6 +28,9 @@ docker/
 *.snz
 *.sidp
 
+*.orig
+*.rej
+
 # Exomizer
 *.os*
 /tools/exo/*/*.prg
