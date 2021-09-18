@@ -15,6 +15,7 @@ resources/*/*.s
 /*.prg
 *.out
 *.lbl
+*.tab
 *.pem
 docker/
 
@@ -43,3 +44,5 @@ sfxdecr*
 *.exo
 
 /memory.js
+
+.sconsign.dblite
