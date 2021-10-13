@@ -7,9 +7,9 @@
 #include "utils.h"
 
 unsigned char ocp_load (char filename[]) {
-    unsigned int seek, size;
-    unsigned char* color_temp;
-    unsigned char err, len;
+    static unsigned int seek, size;
+    static unsigned char* color_temp;
+    static unsigned char err, len;
 
     len = strlen(filename);
     if(len < 4) {

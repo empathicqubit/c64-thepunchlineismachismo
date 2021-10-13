@@ -1,7 +1,7 @@
 {
     "workbench.colorCustomizations": {
 
-        "activityBar.background": "#040", 
+        "activityBar.background": "#040",
     },
     "files.associations": {
         "cstdlib": "c",
@@ -11,6 +11,22 @@
         "mutex": "c",
         "sstream": "c",
         "thread": "c",
-        "typeinfo": "c"
+        "typeinfo": "c",
+        "c64.h": "c",
+        "errno.h": "c",
+        "char_state.h": "c",
+        "optional": "c",
+        "functional": "c",
+        "random": "c",
+        "fstream": "c",
+        "istream": "c",
+        "ostream": "c",
+        "streambuf": "c",
+        "memory": "c",
+        "new": "c",
+        "string_view": "c",
+        "iosfwd": "c",
+        "string": "c",
+        "utils.h": "c"
     }
 }

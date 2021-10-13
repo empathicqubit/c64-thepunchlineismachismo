@@ -43,35 +43,21 @@ struct level_state {
 };
 
 level_state* state;
-unsigned int now;
 
-void depth_sort(char_state **characters) {
-    int i, j;
-    char_state *key;
-    for (i = 1; i < MAX_SCREEN_CHARACTERS; i++) {
-        key = characters[i];
-        j = i - 1;
-
-        /* Move elements of arr[0..i-1], that are
-          greater than key, to one position ahead
-          of their current position */
-        while (j >= 0 && characters[j] && key && characters[j]->path_y < key->path_y) {
-            characters[j + 1] = characters[j];
-            j = j - 1;
+unsigned char level_screen_delete_character(level_screen* screen, register char_state* chara) {
+    static unsigned char idx;
+    register char_state** charas = screen->characters;
+    for(idx = 0; idx < MAX_SCREEN_CHARACTERS - 1; idx++) {
+        if(charas[idx] == chara) {
+            break;
         }
-        characters[j + 1] = key;
     }
-}
 
-unsigned char level_screen_delete_character(level_screen* screen, unsigned char idx) {
-    char_state** charas = screen->characters;
-    sprite_hide(idx);
     for(; idx < MAX_SCREEN_CHARACTERS - 1; idx++) {
         charas[idx] = charas[idx+1];
-        if(!charas[idx]) {
-            sprite_hide(idx % VIC_SPR_COUNT);
-        }
     }
+
+    discard_sprite(chara->sprite);
 
     return EXIT_SUCCESS;
 }
@@ -86,14 +72,14 @@ unsigned char level_screen_add_character(level_screen* screen, char_state* chara
     }
 
     charas[i+1] = chara;
-    depth_sort(charas);
 
     return EXIT_SUCCESS;
 }
 
 unsigned char process_input(void) {
-    unsigned char joyval = joy_read(0x01);
-    char_state* guy = state->guy;
+    static unsigned char joyval;
+    register char_state* guy = state->guy;
+    joyval = joy_read(0x01);
     guy->action_flags &= ~CHAR_ACTION_MOVING_MASK;
 
     if(joyval & JOY_ANY_MASK) {
@@ -124,9 +110,9 @@ unsigned char process_input(void) {
 }
 
 unsigned char process_cpu_input(void) {
-    unsigned char i;
-    char_state* me;
-    level_screen* screen = state->screens[state->screen_index];
+    static unsigned char i;
+    static char_state* me;
+    register level_screen* screen = state->screens[state->screen_index];
 
     for(i = 0; i < MAX_SCREEN_CHARACTERS; i++) {
         me = screen->characters[i];
@@ -165,7 +151,7 @@ unsigned char* level_screen_load_bg(unsigned char* filename, unsigned int* fulls
 
 unsigned char level_screen_init_bg(unsigned char* bg, unsigned int fullsize) {
     unsigned int partialsize, i;
-    unsigned char bg_char;
+    static unsigned char bg_char;
 
     partialsize = fullsize;
     while((bg_char = bg[partialsize-1]) && bg_char < 0x20 || (bg_char >= 0x80 && bg_char <= 0x9f)) {
@@ -186,16 +172,30 @@ unsigned char level_screen_init_bg(unsigned char* bg, unsigned int fullsize) {
     return EXIT_SUCCESS;
 }
 
+unsigned char level_screen_init_sprites(register level_screen* screen) {
+    static unsigned char i;
+    register char_state* chara;
+    for(i = 0; i < MAX_SCREEN_CHARACTERS; i++) {
+        chara = screen->characters[i];
+        if(!chara) {
+            continue;
+        }
+        chara->sprite = new_sprite(true);
+    }
 
-unsigned char move_to_screen(unsigned char screen_idx, unsigned char guy_idx) {
-    unsigned char err;
-    level_screen* dest_screen = state->screens[screen_idx];
+    return EXIT_SUCCESS;
+}
+
+unsigned char move_to_screen(unsigned char screen_idx) {
+    static unsigned char err;
+    static level_screen* dest_screen;
+    dest_screen = state->screens[screen_idx];
 
     if(screen_idx > MAX_SCREEN_CHARACTERS || !dest_screen) {
         return EXIT_FAILURE;
     }
 
-    if(err = level_screen_delete_character(state->screens[state->screen_index], guy_idx)) {
+    if(err = level_screen_delete_character(state->screens[state->screen_index], state->guy)) {
         return err;
     }
 
@@ -211,10 +211,10 @@ unsigned char move_to_screen(unsigned char screen_idx, unsigned char guy_idx) {
 }
 
 unsigned char update(void) {
-    unsigned char i, j, err;
-    unsigned int action_time, status_time;
-    char_state *other, *me;
-    char_action_flag action_flags;
+    static unsigned char i, j, err;
+    static unsigned int action_time, status_time;
+    register char_state *other, *me;
+    static char_action_flag action_flags;
 
     level_screen* screen = state->screens[state->screen_index];
     bool my_last_resort = false;
@@ -228,7 +228,7 @@ unsigned char update(void) {
 
         // Reconcile flags and last_flags
         if(action_flags != me->last_action_flags) {
-            me->action_start = now;
+            me->action_start = game_clock;
 
             if(action_flags & CHAR_ACTION_ATTACKING && !(me->last_action_flags & CHAR_ACTION_ATTACKING)) {
                 sid_play_sound(state->snz, 0, 2);
@@ -238,20 +238,20 @@ unsigned char update(void) {
         me->last_action_flags = action_flags;
 
         if(me->status_flags != me->last_status_flags) {
-            me->status_start = now;
+            me->status_start = game_clock;
         }
 
         me->last_status_flags = me->status_flags;
 
-        action_time = now - me->action_start;
-        status_time = now - me->status_start;
+        action_time = game_clock - me->action_start;
+        status_time = game_clock - me->status_start;
 
         if((me->status_flags & CHAR_STATUS_INVINCIBLE) && status_time > (FRAMES_PER_SEC*3/2)) {
             me->status_flags &= ~CHAR_STATUS_INVINCIBLE;
         }
 
         if((action_flags & CHAR_ACTION_DYING) && action_time > FRAMES_PER_SEC) {
-            level_screen_delete_character(screen, i);
+            level_screen_delete_character(screen, me);
             free(me);
             break;
         }
@@ -309,7 +309,7 @@ unsigned char update(void) {
                         me->path_x -= me->movement_speed;
                     }
                     else {
-                        if(state->guy == me && !(err = move_to_screen(state->screen_index - 1, i))) {
+                        if(state->guy == me && !(err = move_to_screen(state->screen_index - 1))) {
                             me->path_x = MAX_PATH_X;
                             break;
                         }
@@ -343,7 +343,7 @@ unsigned char update(void) {
             }
 
             if(me->path_x > MAX_PATH_X) {
-                if(state->guy == me && !(err = move_to_screen(state->screen_index + 1, i))) {
+                if(state->guy == me && !(err = move_to_screen(state->screen_index + 1))) {
                     me->path_x = 0;
                     break;
                 }
@@ -354,25 +354,27 @@ unsigned char update(void) {
         }
     }
 
-    if(my_last_resort && now % 2 == 0) {
-        depth_sort(screen->characters);
-    }
-
     return EXIT_SUCCESS;
 }
 
 unsigned char render() {
-    unsigned char i, sheet_idx, action_flags, err;
-    bool animate = true;
-    sprite_sequence* selected_sprite;
-    char_sprite_group* selected_char;
-    char_state *me;
-    unsigned int animation_time;
+    static unsigned char i, sheet_idx, action_flags, err;
+    static bool animate = true;
+    static sprite_sequence* selected_sprite;
+    static char_sprite_group* selected_char;
+    register char_state *me;
+    static unsigned int animation_time;
 
-    sprite_sequence* after_finish = NULL;
-    level_screen* screen = state->screens[state->screen_index];
+    static sprite_sequence* after_finish = NULL;
+    static level_screen* screen;
 
-    if(!state->bg_rendered && (err = level_screen_init_bg(screen->bg_data, screen->bg_length))) {
+    screen = state->screens[state->screen_index];
+
+    if(!state->bg_rendered && (
+        (err = level_screen_init_bg(screen->bg_data, screen->bg_length))
+        || (err = level_screen_init_sprites(screen))
+        )
+    ) {
         return err;
     }
     state->bg_rendered = true;
@@ -386,12 +388,12 @@ unsigned char render() {
 
         action_flags = me->action_flags;
 
-        animation_time = now - me->action_start;
+        animation_time = game_clock - me->action_start;
 
         if(action_flags & CHAR_ACTION_DIRECTION_RIGHTLEFT) {
             if(me->status_flags & CHAR_STATUS_INVINCIBLE) {
                 selected_sprite = selected_char->oof_left;
-                animation_time = now - me->status_start;
+                animation_time = game_clock - me->status_start;
                 after_finish = selected_char->walk_left;
             }
             else if(action_flags & CHAR_ACTION_ATTACKING) {
@@ -408,7 +410,7 @@ unsigned char render() {
         else {
             if(me->status_flags & CHAR_STATUS_INVINCIBLE) {
                 selected_sprite = selected_char->oof_right;
-                animation_time = now - me->status_start;
+                animation_time = game_clock - me->status_start;
                 after_finish = selected_char->walk_right;
             }
             else if(action_flags & CHAR_ACTION_ATTACKING) {
@@ -441,31 +443,20 @@ unsigned char render() {
             }
         }
 
-        spritesheet_show(i % VIC_SPR_COUNT, sheet_idx, SCREEN_SPRITE_BORDER_X_START + me->path_x + ((SCREEN_SPRITE_BORDER_HEIGHT / 2 - me->path_y) / 4), (me->path_y / 2) + (SCREEN_SPRITE_BORDER_HEIGHT * 3 / 4), true, true);
+        set_sprite_graphic(me->sprite, sheet_idx);
+        set_sprite_x(me->sprite, SCREEN_SPRITE_BORDER_X_START + me->path_x + ((SCREEN_SPRITE_BORDER_HEIGHT / 2 - me->path_y) / 4));
+        set_sprite_y(me->sprite, (me->path_y / 2) + (SCREEN_SPRITE_BORDER_HEIGHT * 3 / 4));
     }
 
     return EXIT_SUCCESS;
 }
 
-void level_raster_irq(void) {
-    now++;
-
-    sid_play_frame();
-    if(state->bg_rendered) {
-        update();
-    }
-}
-
-unsigned char level_irq_handler(void) {
-    return consume_raster_irq(&level_raster_irq);
-}
-
 unsigned char level_state_init(unsigned char num) {
-    unsigned char i, err;
-    unsigned char* bg_data;
-    char_state* meece;
-    level_screen** screens;
-    level_screen* screen;
+    static unsigned char i, err;
+    static unsigned char* bg_data;
+    static char_state* meece;
+    static level_screen** screens;
+    static level_screen* screen;
 
     state = calloc(1, sizeof(level_state));
 
@@ -486,7 +477,7 @@ unsigned char level_state_init(unsigned char num) {
 
         meece = char_state_init(CHAR_TYPE_MOOSE);
         meece->path_x = 0;
-        meece->path_y = 0;
+        meece->path_y = state->guy->path_y;
         level_screen_add_character(screen, meece);
 
         meece = char_state_init(CHAR_TYPE_MOOSE);
@@ -500,14 +491,15 @@ unsigned char level_state_init(unsigned char num) {
         level_screen_add_character(screen, meece);
 
         meece = char_state_init(CHAR_TYPE_MOOSE);
-        meece->path_x = MAX_PATH_X;
-        meece->path_y = 0;
+        meece->path_x = MAX_PATH_X / 2;
+        meece->path_y = MAX_PATH_Y;
         level_screen_add_character(screen, meece);
 
         meece = char_state_init(CHAR_TYPE_MOOSE);
-        meece->path_x = MAX_PATH_X / 2;
-        meece->path_y = MAX_PATH_Y / 2;
+        meece->path_x = MAX_PATH_X / 4;
+        meece->path_y = MAX_PATH_Y;
         level_screen_add_character(screen, meece);
+
 
         screens[0] = screen;
 
@@ -564,16 +556,20 @@ unsigned char level_state_init(unsigned char num) {
     return EXIT_SUCCESS;
 }
 
-unsigned char play_level (void) {
-    unsigned char err;
-    level_screen* screen;
 
-    screen_init(true);
+unsigned char play_level (void) {
+    static unsigned char err;
+    register level_screen* screen;
+    static unsigned int last_updated;
+
+    is_pal = get_tv();
+
+    init_sprite_pool();
 
     puts("growing pine needles...");
 
     if(err = spritesheet_load("canada.spd")) {
-        printf("sprite load error: %x\n", err);
+        printf("sprite load error: %s\n", strerror(err));
         while(1);
     }
 
@@ -598,23 +594,24 @@ unsigned char play_level (void) {
         return EXIT_FAILURE;
     }
 
-    setup_irq_handler(&level_irq_handler);
+    setup_irq_handler();
+    screen_init(true);
 
     bgcolor(COLOR_LIGHTBLUE);
     bordercolor(COLOR_GREEN);
 
     while (true)
     {
-        // World update was originally in this loop, but doing it here
-        // blew up the complexity of the program too much.
-        // Interrupts are simpler and guaranteed, and force the game
-        // logic to be simple since no standard library functions can
-        // be called.
         process_input();
         process_cpu_input();
         if(err = render()) {
             printf("Error rendering the game state: %x\n", err);
             return EXIT_FAILURE;
+        }
+
+        if(last_updated != game_clock) {
+            update();
+            last_updated++;
         }
     }
 }

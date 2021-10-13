@@ -2,38 +2,11 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <errno.h>
 #include "c64.h"
+#include "sprite.h"
 
 #define SPD_PADDING 55
-
-/* Move a sprite that is already loaded
- * @param sprite_slot - Which of the 8 sprite slots on the C64.
- * @param x - X position
- * @param y - Y position
- * @return If we were successful or not
- */
-unsigned char sprite_move(unsigned char sprite_slot, unsigned int x, unsigned char y) {
-    unsigned char hi_mask = (1<<sprite_slot);
-
-    unsigned char* hi = VIC_SPR_HI_X;
-
-    unsigned char* sprite_x = VIC_SPR0_X + sprite_slot * 2;
-    unsigned char* sprite_y = VIC_SPR0_Y + sprite_slot * 2;
-
-    if(sprite_slot > VIC_SPR_COUNT-1) return EXIT_FAILURE;
-
-    if(x>>8) {
-        *hi |= hi_mask;
-    }
-    else {
-        *hi &= ~hi_mask;
-    }
-
-    *sprite_x = (unsigned char)x;
-    *sprite_y = y;
-
-    return EXIT_SUCCESS;
-}
 
 unsigned char spritesheet_animation_next(unsigned int action_time, unsigned char frame_duration, unsigned char sheet_idx_begin, unsigned char animation_length, bool animation_loop, unsigned char sheet_idx_after_finish) {
     if(!animation_loop && action_time > animation_length * frame_duration) {
@@ -62,18 +35,26 @@ struct spd {
 };
 typedef struct spd spd;
 
-const unsigned char SPRITE_MAX = 80;
+#define SPRITE_MAX 80
 
 /* Load a sprite sheet in SpritePad format
  * @param filename - The filename on disk
  * @return - Whether the sheet successfully loaded into memory.
  */
 unsigned char spritesheet_load(unsigned char* filename) {
-    FILE* fp;
-    spd* spd_data;
-    unsigned char* header;
+    static FILE* fp;
+    register spd* spd_data;
+    static unsigned char* header;
 
     fp = fopen(filename, "rb");
+    if(!fp) {
+        if(errno != 0) {
+            return errno;
+        }
+        else {
+            return EXIT_FAILURE;
+        }
+    }
 
     // Used to write this directly to the memory area, but we can't read it if we do.
     if(!(header = calloc(1, VIC_SPR_SIZE))
@@ -108,138 +89,175 @@ unsigned char spritesheet_load(unsigned char* filename) {
     return EXIT_SUCCESS;
 }
 
-const unsigned char SPD_SPRITE_MULTICOLOR_ENABLE_MASK = 0x80;
-const unsigned char SPD_SPRITE_COLOR_VALUE_MASK = 0x0F;
+#define SPD_SPRITE_MULTICOLOR_ENABLE_MASK 0x80
+#define SPD_SPRITE_COLOR_VALUE_MASK 0x0F
 
-/* Get the current sprite index in the spritesheet
- * @param sprite_slot - Which of the 8 sprite slots on the C64.
- */
-unsigned char spritesheet_get_index(unsigned char sprite_slot) {
-    unsigned char* spr_pointers;
-    unsigned char spr_pointer;
-    spd* spd_data = (spd*)SPRITE_START;
+#define SPRITE_POOL_SIZE 32
+struct sprite_data _sprite_pool[SPRITE_POOL_SIZE];
+sprite_handle _sprite_list[SPRITE_POOL_SIZE];
+unsigned char sprite_count = 0;
 
-    if(sprite_slot > VIC_SPR_COUNT-1) return -1;
-
-    spr_pointers = SCREEN_START + 0x03F8;
-
-    spr_pointer = spr_pointers[sprite_slot];
-
-    return spr_pointer - (unsigned char)((unsigned int)&(spd_data->sprites) / VIC_SPR_SIZE);
+void init_sprite_pool(void) {
+    memset(&_sprite_pool, 0x00, sizeof(struct sprite_data) * SPRITE_POOL_SIZE);
+    memset(&_sprite_list, NULL, sizeof(sprite_handle) * SPRITE_POOL_SIZE);
 }
 
-/* Load a sprite with SpritePad metadata byte
- * @param sprite_slot - Which of the 8 sprite slots on the C64.
- * @param sheet_idx - The sprite index in the sheet.
- * @return If we were successful or not
- */
-unsigned char spritesheet_set_image(unsigned char sprite_slot, unsigned char sheet_idx) {
-    unsigned char* spr_pointers;
-    spd* spd_data = (spd*)SPRITE_START;
-    spd_sprite* spd_sprite;
-    char hi_mask;
+void set_sprite_pointer(sprite_handle handle, unsigned char sprite_pointer) {
+    static spd_sprite* sprite;
 
-    if(sprite_slot > VIC_SPR_COUNT-1) return EXIT_FAILURE;
+    sprite = (spd_sprite*)(SCREEN_START + sprite_pointer * VIC_SPR_SIZE);
 
-    hi_mask = (1<<sprite_slot);
-
-    spd_sprite = &(spd_data->sprites[sheet_idx]);
-
-    spr_pointers = SCREEN_START + 0x03F8;
-
-    spr_pointers[sprite_slot] = (unsigned char)((unsigned int)spd_sprite / VIC_SPR_SIZE);
-
-    if(spd_sprite->metadata & SPD_SPRITE_MULTICOLOR_ENABLE_MASK) {
-        *(char *)VIC_SPR_MCOLOR |= hi_mask;
+    handle->pointer = sprite_pointer;
+    handle->color = sprite->metadata & SPD_SPRITE_COLOR_VALUE_MASK;
+    if(sprite->metadata & SPD_SPRITE_MULTICOLOR_ENABLE_MASK) {
+        handle->multi = handle->ena;
     }
     else {
-        *(char *)VIC_SPR_MCOLOR &= ~hi_mask;
+        handle->multi = 0;
     }
-
-    ((char *)VIC_SPR0_COLOR)[sprite_slot] = spd_sprite->metadata;
-
-    return EXIT_SUCCESS;
 }
 
-/** Hide the sprite in the slot
- * @param sprite_slot - The sprite to hide
- * @return If we were successful or not
- */
-unsigned char sprite_hide(unsigned char sprite_slot) {
-    char hi_mask;
-    if(sprite_slot > VIC_SPR_COUNT-1) return EXIT_FAILURE;
-
-    hi_mask = (1<<sprite_slot);
-
-    *(unsigned char *)VIC_SPR_ENA &= ~hi_mask;
-
-    return EXIT_SUCCESS;
+void set_sprite_graphic(sprite_handle handle, unsigned char sheet_index) {
+    static spd* s = (spd*)SPRITE_START;
+    set_sprite_pointer(handle, ((unsigned int)(&s->sprites[sheet_index]) % VIC_BANK_SIZE) / VIC_SPR_SIZE);
 }
 
-/* Load a sprite with SpritePad metadata byte
- * @param sprite_slot - Which of the 8 sprite slots on the C64.
- * @param sheet_idx - The sprite index in the sheet.
- * @param x - X position
- * @param y - Y position
- * @param double_width - Double sprite width
- * @param double_height - Double sprite height
- * @return If we were successful or not
- */
-unsigned char spritesheet_show(unsigned char sprite_slot, unsigned char sheet_idx, unsigned int x, unsigned char y, bool double_width, bool double_height) {
-    char hi_mask;
-    unsigned char err;
+void set_sprite_x(sprite_handle a, unsigned int x) {
+    static sprite_handle arg;
 
-    if(err = spritesheet_set_image(sprite_slot, sheet_idx)) {
-        return err;
-    }
+    arg = a;
 
-    if(err = sprite_move(sprite_slot, x, y)) {
-        return err;
-    }
-
-    hi_mask = (1<<sprite_slot);
-
-    if(double_width) {
-        *(unsigned char *)VIC_SPR_EXP_X |= hi_mask;
+    if(x>>8) {
+        arg->hi_x = arg->ena;
     }
     else {
-        *(unsigned char *)VIC_SPR_EXP_X &= ~hi_mask;
+        arg->hi_x = 0;
     }
 
-    if(double_height) {
-        *(unsigned char *)VIC_SPR_EXP_Y |= hi_mask;
-    }
-    else {
-        *(unsigned char *)VIC_SPR_EXP_Y &= ~hi_mask;
-    }
-
-    *(unsigned char *)VIC_SPR_ENA |= hi_mask;
-
-    return EXIT_SUCCESS;
+    arg->lo_x = (unsigned char)x;
 }
 
-/* Advance the sprite to the next one in the sequence.
- * @param sprite_slot - Which of the 8 sprite slots on the C64.
- * @param sheet_idx_begin - The first sprite index in the sheet.
- * @param sheet_idx_end - The last sprite index in the sheet.
- */
-unsigned char spritesheet_next_image(unsigned char sprite_slot, unsigned char sheet_idx_begin, unsigned char sheet_idx_end) {
-    unsigned char current_idx = spritesheet_get_index(sprite_slot);
-    unsigned char err;
+void set_sprite_y(sprite_handle a, unsigned char y) {
+    register sprite_handle *comp_handle, *current_handle;
+    register sprite_handle comp;
+    static sprite_handle* start_handle;
+    static sprite_handle arg;
+    static unsigned char index, last_index, hi_mask, comp_y, yarg;
+    static bool direction, is_last;
 
-    if(current_idx == -1) {
-        return EXIT_FAILURE;
+    yarg = y;
+    arg = a;
+
+    comp_y = arg->lo_y;
+    if(yarg == comp_y) {
+        return;
+    }
+    arg->lo_y = yarg;
+
+    index = 0;
+    for(
+        start_handle = _sprite_list;
+        *start_handle != arg;
+        start_handle++
+    ) {
+        index++;
     }
 
-    current_idx++;
-
-    if(current_idx > sheet_idx_end || current_idx < sheet_idx_begin) {
-        current_idx = sheet_idx_begin;
+    if(yarg > comp_y) {
+        last_index = sprite_count - 1;
+        if(last_index == index) {
+            return;
+        }
+        direction = true;
+    }
+    else {
+        if(index == 0) {
+            return;
+        }
+        direction = false;
     }
 
-    if(err = spritesheet_set_image(sprite_slot, current_idx)) {
-        return err;
-    }
+    current_handle = start_handle;
+    do {
+        if(direction) {
+            comp_handle = current_handle + 1;
+            comp = *comp_handle;
+            is_last = (yarg <= comp->lo_y
+                || index == last_index);
+        }
+        else {
+            comp_handle = current_handle - 1;
+            comp = *comp_handle;
+            is_last = (comp->lo_y <= yarg
+                || index == 0);
+        }
 
-    return EXIT_SUCCESS;
+        if(is_last) {
+            if(current_handle == start_handle) {
+                break;
+            }
+
+            comp = arg;
+        }
+
+        hi_mask = 1<<(index%VIC_SPR_COUNT);
+
+        __asm__("ldy #%b", offsetof(struct sprite_data, ena));
+
+        __asm__("ldx %v", hi_mask);
+        __asm__("loop: lda (%v),Y", comp);
+        __asm__("beq done");
+        __asm__("txa");
+        __asm__("sta (%v),Y", comp);
+        __asm__("done: iny");
+        __asm__("tya");
+        __asm__("sbc #%b", offsetof(struct sprite_data, multi));
+        __asm__("bne loop");
+
+        if(is_last) {
+            *current_handle = comp;
+            break;
+        }
+
+        *current_handle = comp;
+        *comp_handle = arg;
+
+        if(direction) {
+            index++;
+            current_handle++;
+        }
+        else {
+            index--;
+            current_handle--;
+        }
+
+    } while (true);
+}
+
+void discard_sprite(sprite_handle handle) {
+    sprite_count--;
+    _sprite_list[sprite_count] = NULL;
+    set_sprite_x(handle, 0xff);
+    set_sprite_y(handle, 0xff);
+}
+
+sprite_handle new_sprite(bool dbl) {
+    register sprite_handle handle;
+    static unsigned char hi_mask;
+
+    handle = &_sprite_pool[sprite_count];
+    _sprite_list[sprite_count] = handle;
+    hi_mask = 1<<(sprite_count%VIC_SPR_COUNT);
+    handle->ena = hi_mask;
+    if(dbl) {
+        handle->dbl = hi_mask;
+    }
+    else {
+        handle->dbl = 0;
+    }
+    handle->lo_x = 0xfe;
+    handle->lo_y = 0xfe;
+    sprite_count++;
+
+    return handle;
 }

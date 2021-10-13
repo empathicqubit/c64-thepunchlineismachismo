@@ -1,4 +1,5 @@
 #include <joystick.h>
+#include "sprite.h"
 #include "c64.h"
 enum {
     CHAR_TYPE_GUY = 0,
@@ -10,13 +11,13 @@ enum {
     // 0 is up, 1 is down
     CHAR_ACTION_DIRECTION_UPDOWN = 0x01,
     // 0 is right, 1 is left
-    CHAR_ACTION_DIRECTION_RIGHTLEFT = 0x02, 
+    CHAR_ACTION_DIRECTION_RIGHTLEFT = 0x02,
     CHAR_ACTION_DIRECTION_MASK = 0x03,
 
     // Are we moving along the x axis?
     CHAR_ACTION_MOVING_RIGHTLEFT = 0x04,
     // Are we moving along the y axis?
-    CHAR_ACTION_MOVING_UPDOWN = 0x08, 
+    CHAR_ACTION_MOVING_UPDOWN = 0x08,
     CHAR_ACTION_MOVING_MASK = 0x0C,
 
     CHAR_ACTION_ATTACKING = JOY_BTN_1_MASK,    // 0x10
@@ -61,6 +62,8 @@ struct char_state {
 
     char_status_flag status_flags; // Flags now
     char_status_flag last_status_flags; // Flags at the last tick
+
+    sprite_handle sprite;
 };
 
 /*

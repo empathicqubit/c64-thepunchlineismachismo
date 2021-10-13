@@ -3,11 +3,11 @@
         {
             "name": "Main",
             "includePath": [
-                "/usr/share/cc65/include",
+                "${HOME}/.vscode/extensions/entan-gl.cc65-vice-4.9.0/dist/cc65/include",
                 "${workspaceFolder}/code"
             ],
             "intelliSenseMode": "gcc-x64",
-            "compilerPath": "/usr/bin/cc65",
+            "compilerPath": "${HOME}/.vscode/extensions/entan-gl.cc65-vice-4.9.0/dist/cc65/bin/cc65",
             "cStandard": "c99",
             "cppStandard": "c++98"
         }

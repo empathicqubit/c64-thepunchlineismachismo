@@ -19,14 +19,10 @@ void main_raster_irq(void) {
     sid_play_frame();
 }
 
-unsigned char main_irq_handler(void) {
-    return consume_raster_irq(&main_raster_irq);
-}
-
 unsigned char intro_screen() {
-    unsigned char err, joyval;
-    unsigned int data_size;
-    unsigned char* data;
+    static unsigned char err, joyval;
+    static unsigned int data_size;
+    static unsigned char* data;
 
     screen_init(true);
 
@@ -44,7 +40,7 @@ unsigned char intro_screen() {
         return EXIT_FAILURE;
     }
 
-    setup_irq_handler(&main_irq_handler);
+    setup_irq_handler();
 
     while(1) {
         joyval = joy_read(0x01);
@@ -53,7 +49,7 @@ unsigned char intro_screen() {
         }
     }
 
-    setup_irq_handler(NULL);
+    destroy_irq_handler();
 
     sid_stop();
 
@@ -61,7 +57,7 @@ unsigned char intro_screen() {
 }
 
 unsigned char main (void) {
-    unsigned char err;
+    static unsigned char err;
 
     character_init(true);
 

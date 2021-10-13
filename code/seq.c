@@ -13,14 +13,14 @@
  * @return If we were sucessful.
  */
 unsigned char* seq_load (unsigned char* filename, unsigned int* size) {
-    unsigned char err;
-    unsigned char* dest;
+    static unsigned char err;
+    static unsigned char* dest = NULL;
 
     if(err = exo_open(filename, size)) {
         return NULL;
     }
 
-    if(!(dest = malloc(*size))) {
+    if((dest = malloc(*size)) == NULL) {
         exo_close();
         return NULL;
     }

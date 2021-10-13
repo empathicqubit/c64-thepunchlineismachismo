@@ -2,6 +2,9 @@
 
 #define FRAMES_PER_SEC 50
 
+extern unsigned int game_clock;
+extern bool is_pal;
+
 /** Check if system is actually PAL and store in the PALFLAG
  * More reliable than the system's flag apparently.
  */
@@ -44,6 +47,5 @@ void character_init(bool use_graphics_charset);
  */
 int get_filesize(char filename[]);
 
-unsigned char setup_irq_handler(unsigned char (*handler)(void));
-
-unsigned char consume_raster_irq(void (*raster_handler)(void));
+unsigned char setup_irq_handler();
+unsigned char destroy_irq_handler();

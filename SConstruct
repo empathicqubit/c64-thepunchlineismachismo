@@ -12,29 +12,42 @@ if 'CC65_HOME' in os.environ:
 else:
     cc65_home = str(Glob(os.environ['HOME'] + '/.vscode/extensions/entan-gl.cc65-vice*/dist/cc65')[0])
 
-sfx = True
-if sfx:
+sfx = -1
+if sfx == 1:
     linker_cfg=File('linker_sfx.cfg')
-else:
+elif sfx == 0:
     linker_cfg=File('linker.cfg')
-
-asflags = [
-    '--cpu', '6502X', '-DSID_START=\\$$'+sid_highbyte+'00',
-]
+else:
+    linker_cfg=File('linker_nosled.cfg')
 
 flags = [
-    '-O', '-Osr', '-t', 'c64', '-C', linker_cfg,
+    '--cpu', '6502X', '-g', '-t', 'c64',
+]
+
+asflags = [
+    '-DSID_START=\\$$'+sid_highbyte+'00', '-g'
+]
+asflags.extend(flags)
+
+cflags = [
+    '-O', '-Osr', '-C', linker_cfg,
 
     '-Wc', '-DSID_SIZE=1000', '-Wc', '-DBITMAP_START=0x'+bitmap_start,
     '-Wc', '-DSCREEN_START=0x'+screen_start, '-Wc', '-DCHARACTER_START=0x'+character_start,
     '-Wc', '-DSPRITE_START=0x'+sprite_start,
 
     '-Wc', '--debug-tables', '-Wc', '${SOURCE}.tab',
-    '-g', '-Wc', '-DDEBUG=0', '-Wl', '-Lnbuild/machismo.lbl', '-vm',
-    '-Wl', '--mapfile,build/machismo.map', '-Wl', '--dbgfile,build/machismo.dbg',
+    '-Wc', '-DDEBUG=1',
 ]
+cflags.extend(flags)
 
-flags.extend(asflags)
+lflags = [
+    '-O', '-Osr', '-C', linker_cfg,
+
+    '-Wl', '--mapfile,build/machismo.map', '-Wl', '--dbgfile,build/machismo.dbg',
+    '-Wl', '-Lnbuild/machismo.lbl', '-vm',
+]
+lflags.extend(flags)
 
 gt2reloc_opts = '-P -W%s -B1 -D1 -ZFB -C0 -E0 -H0 -R1' % (sid_highbyte)
 
@@ -140,13 +153,14 @@ env = Environment(
     },
     ENV = {
         'PATH': os.environ["PATH"],
-        'CC65_HOME': cc65_home
+        'CC65_HOME': cc65_home,
+        'DISPLAY': os.environ['DISPLAY']
     },
     AS = 'ca65',
     ASFLAGS = asflags,
     CC = 'cl65',
-    CFLAGS = flags,
-    LINKFLAGS = flags
+    CFLAGS = cflags,
+    LINKFLAGS = lflags
 )
 env.PrependENVPath("PATH", cc65_home + "/bin_linux_x64")
 sources = [
@@ -154,7 +168,7 @@ sources = [
     Glob('code/*_asm.s'),
     'resources/sprites/canada.c'
 ]
-precrunch = env.Program(target=['build/precrunch.prg', Glob('code/*.c.tab'), 'build/machismo.dbg', 'build/machismo.map', 'build/machismo.lbl'], source=sources)
+precrunch = env.Program(target=['build/precrunch.prg', 'build/machismo.dbg', 'build/machismo.map', 'build/machismo.lbl'], source=sources)
 
 exomizer_tool = env.Command(target="tools/exo/src/exomizer", source="tools/exo/src/Makefile", action="""
 cd "$SOURCE.dir" && make CC=gcc
@@ -162,7 +176,7 @@ cd "$SOURCE.dir" && make CC=gcc
 
 exomizer = env.Command(target=exo_path, source=exomizer_tool, action=Copy("$TARGET", "$SOURCE"))
 
-if sfx:
+if sfx == 1:
     crunch_action = """
 "%s" sfx 0x03d3 -x3 "$SOURCE" -o "$TARGET"
 """ % (exo_path)
@@ -210,11 +224,11 @@ sprites = Glob('resources/sprites/*.spd')
 
 disk_files = []
 disk_files.append(crunched)
+disk_files.extend(sprites)
 disk_files.append(sound_archive)
 disk_files.extend(bitmap_parts)
 disk_files.extend(sids)
 disk_files.extend(sexes)
-disk_files.extend(sprites)
 
 def disk_func(target, source, env):
     if not target[0].exists():
@@ -222,6 +236,9 @@ def disk_func(target, source, env):
     changes = []
     for src in source:
         basename = os.path.basename(str(src))
+        #if str(src).endswith("spd"):
+        #    changes.append(""" -delete 'farts.spd' -write '%s' 'farts.spd'""" % (str(src)))
+        #else:
         changes.append(""" -delete '%s' -write '%s' '%s'""" % (basename, str(src), basename))
     env.Execute("""c1541 -attach '%s' %s """ % (str(target[0]), ''.join(changes)))
 
