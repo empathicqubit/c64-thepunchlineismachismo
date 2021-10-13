@@ -8,12 +8,15 @@
 
 #define SPD_PADDING 55
 
-unsigned char spritesheet_animation_next(unsigned int action_time, unsigned char frame_duration, unsigned char sheet_idx_begin, unsigned char animation_length, bool animation_loop, unsigned char sheet_idx_after_finish) {
-    if(!animation_loop && action_time > animation_length * frame_duration) {
+unsigned char spritesheet_animation_next(unsigned char action_time, unsigned char frame_duration, unsigned char sheet_idx_begin, unsigned char animation_length, bool animation_loop, unsigned char sheet_idx_after_finish) {
+    static unsigned char total_duration;
+
+    if(!animation_loop && action_time == 0) {
         return sheet_idx_after_finish;
     }
 
-    return sheet_idx_begin + ((action_time % (animation_length * frame_duration)) / frame_duration);
+    total_duration = animation_length * frame_duration;
+    return sheet_idx_begin + (((total_duration - action_time) % total_duration) / frame_duration);
 }
 
 struct spd_sprite {

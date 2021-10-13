@@ -2,7 +2,7 @@
 
 #define FRAMES_PER_SEC 50
 
-extern unsigned int game_clock;
+extern unsigned char game_clock;
 extern bool is_pal;
 
 /** Check if system is actually PAL and store in the PALFLAG

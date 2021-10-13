@@ -5,6 +5,8 @@
 char_state* char_state_init(char_type c) {
     register char_state* state = calloc(1, sizeof(char_state));
     state->char_type = c;
+    state->action_frames_left = 0;
+    state->status_frames_left = 0;
     if(c == CHAR_TYPE_GUY) {
         state->path_x = 25;
         state->path_y = 25;

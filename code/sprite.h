@@ -17,14 +17,14 @@ struct sprite_data {
 typedef struct sprite_data* sprite_handle;
 
 /* Get the next sprite in the sequence, based on the time since the action started
- * @param action_time - jiffies since the action started
- * @param frame_duration - jiffies per frame
+ * @param action_time - updates until the action finishes
+ * @param frame_duration - updates per frame
  * @param sheet_idx_begin - first sprite in the animation
  * @param animation_length - How many frames
  * @param animation_loop - Keep looping the animation after it finishes. Otherwise use sheet_idx_after_finish
  * @param sheet_idx_after_finish - The sprite index to use after the animation completes
  */
-unsigned char spritesheet_animation_next(unsigned int action_time, unsigned char frame_duration, unsigned char sheet_idx_begin, unsigned char animation_length, bool animation_loop, unsigned char sheet_idx_after_finish);
+unsigned char spritesheet_animation_next(unsigned char action_time, unsigned char frame_duration, unsigned char sheet_idx_begin, unsigned char animation_length, bool animation_loop, unsigned char sheet_idx_after_finish);
 
 /* Load a sprite sheet in SpritePad format
  * @param filename - The filename on disk

@@ -2,7 +2,7 @@ typedef struct sprite_sequence sprite_sequence;
 struct sprite_sequence {
     unsigned char start_index;
     unsigned char length;
-    // Time for each frame in jiffies
+    // Time for each frame in updates
     unsigned char frame_duration;
 };
 

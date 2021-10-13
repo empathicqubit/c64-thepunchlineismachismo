@@ -80,8 +80,8 @@ raster_clock:   .byte $06
     jmp sprite_index_updated
 update_game_clock:
     inc _game_clock
-    bne sprite_index_updated
-    inc _game_clock+1
+    ; bne sprite_index_updated
+    ; inc _game_clock+1
 sprite_index_updated:
 
     get_next_sprite

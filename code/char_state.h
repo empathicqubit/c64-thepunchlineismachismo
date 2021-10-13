@@ -37,7 +37,9 @@ typedef unsigned char char_status_flag;
 
 typedef struct char_state char_state;
 struct char_state {
-    char_type char_type; // The type of the character
+    /** The type of the character
+     */
+    char_type char_type;
 
     /** X position within the path. The path width is the same as the screen,
       * but because the path is at an angle points further away from the screen
@@ -48,20 +50,40 @@ struct char_state {
       * but gets divided by half and pushed to the bottom half when being rendered
       */
     unsigned char path_y;
-    unsigned char movement_speed; // pixels per jiffy
+    /** pixels per update
+     */
+    unsigned char movement_speed;
 
-    unsigned char default_sprite; // The default sprite in the sheet.
+    /** The default sprite in the sheet.
+     */
+    unsigned char default_sprite;
 
-    unsigned char hitpoints; // How many hits until the character dies
-    unsigned char attackpoints; // How many hits a character deals. Most of the time this is 1.
-    unsigned int action_start; // Jiffy time the action started.
-    unsigned int status_start; // Jiffy time the status started.
+    /** How many hits until the character dies
+     */
+    unsigned char hitpoints; //
+    /** How many hits a character deals. Most of the time this is 1.
+     */
+    unsigned char attackpoints;
+    /** Number of updates left until action completes
+     */
+    unsigned char action_frames_left;
+    /** Number of updates left until status completes
+     */
+    unsigned char status_frames_left;
 
-    char_action_flag action_flags; // Flags now
-    char_action_flag last_action_flags; // Flags at the last tick
+    /** Flags now
+     */
+    char_action_flag action_flags;
+    /** Flags at the last tick
+     */
+    char_action_flag last_action_flags;
 
-    char_status_flag status_flags; // Flags now
-    char_status_flag last_status_flags; // Flags at the last tick
+    /** Flags now
+     */
+    char_status_flag status_flags;
+    /** Flags at the last tick
+     */
+    char_status_flag last_status_flags;
 
     sprite_handle sprite;
 };

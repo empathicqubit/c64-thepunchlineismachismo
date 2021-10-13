@@ -212,7 +212,7 @@ unsigned char move_to_screen(unsigned char screen_idx) {
 
 unsigned char update(void) {
     static unsigned char i, j, err;
-    static unsigned int action_time, status_time;
+    static unsigned char action_frames_left, status_time;
     register char_state *other, *me;
     static char_action_flag action_flags;
 
@@ -228,29 +228,37 @@ unsigned char update(void) {
 
         // Reconcile flags and last_flags
         if(action_flags != me->last_action_flags) {
-            me->action_start = game_clock;
-
             if(action_flags & CHAR_ACTION_ATTACKING && !(me->last_action_flags & CHAR_ACTION_ATTACKING)) {
-                sid_play_sound(state->snz, 0, 2);
+                me->action_frames_left = 25;
+
+                // FIXME sid_play_sound(state->snz, 0, 2);
             }
+        }
+
+        if(me->action_frames_left > 0) {
+            me->action_frames_left--;
+        }
+        else if(action_flags & CHAR_ACTION_MOVING_MASK) {
+            me->action_frames_left = 2;
         }
 
         me->last_action_flags = action_flags;
 
         if(me->status_flags != me->last_status_flags) {
-            me->status_start = game_clock;
+            // FIXME
+            me->status_frames_left = 0;
         }
 
         me->last_status_flags = me->status_flags;
 
-        action_time = game_clock - me->action_start;
-        status_time = game_clock - me->status_start;
+        action_frames_left = me->action_frames_left;
+        status_time = me->status_frames_left;
 
         if((me->status_flags & CHAR_STATUS_INVINCIBLE) && status_time > (FRAMES_PER_SEC*3/2)) {
             me->status_flags &= ~CHAR_STATUS_INVINCIBLE;
         }
 
-        if((action_flags & CHAR_ACTION_DYING) && action_time > FRAMES_PER_SEC) {
+        if((action_flags & CHAR_ACTION_DYING) && action_frames_left > FRAMES_PER_SEC) {
             level_screen_delete_character(screen, me);
             free(me);
             break;
@@ -262,7 +270,7 @@ unsigned char update(void) {
         }
 
         if(action_flags & CHAR_ACTION_ATTACKING) {
-            if(action_time > (FRAMES_PER_SEC/6) && action_time < (FRAMES_PER_SEC/3)) {
+            if(action_frames_left < 20 && action_frames_left > 5) {
                 for(j = 0; j < MAX_SCREEN_CHARACTERS; j++) {
                     other = screen->characters[j];
                     if(!other || other == me) {
@@ -297,7 +305,7 @@ unsigned char update(void) {
                     }
                 }
             }
-            else if(action_time > (FRAMES_PER_SEC/2)) {
+            else if(action_frames_left == 0) {
                 me->action_flags &= ~CHAR_ACTION_ATTACKING;
             }
         }
@@ -359,7 +367,7 @@ unsigned char update(void) {
 
 unsigned char render() {
     static unsigned char i, sheet_idx, action_flags, err;
-    static bool animate = true;
+    static bool animate;
     static sprite_sequence* selected_sprite;
     static char_sprite_group* selected_char;
     register char_state *me;
@@ -384,16 +392,18 @@ unsigned char render() {
 
         if(!me) continue;
 
+        animate = true;
+
         selected_char = SPRITES[me->char_type];
 
         action_flags = me->action_flags;
 
-        animation_time = game_clock - me->action_start;
+        animation_time = me->action_frames_left;
 
         if(action_flags & CHAR_ACTION_DIRECTION_RIGHTLEFT) {
             if(me->status_flags & CHAR_STATUS_INVINCIBLE) {
                 selected_sprite = selected_char->oof_left;
-                animation_time = game_clock - me->status_start;
+                animation_time = me->status_frames_left;
                 after_finish = selected_char->walk_left;
             }
             else if(action_flags & CHAR_ACTION_ATTACKING) {
@@ -410,7 +420,7 @@ unsigned char render() {
         else {
             if(me->status_flags & CHAR_STATUS_INVINCIBLE) {
                 selected_sprite = selected_char->oof_right;
-                animation_time = game_clock - me->status_start;
+                animation_time = me->status_frames_left;
                 after_finish = selected_char->walk_right;
             }
             else if(action_flags & CHAR_ACTION_ATTACKING) {
@@ -560,7 +570,6 @@ unsigned char level_state_init(unsigned char num) {
 unsigned char play_level (void) {
     static unsigned char err;
     register level_screen* screen;
-    static unsigned int last_updated;
 
     is_pal = get_tv();
 
@@ -600,18 +609,21 @@ unsigned char play_level (void) {
     bgcolor(COLOR_LIGHTBLUE);
     bordercolor(COLOR_GREEN);
 
+    game_clock = 0;
     while (true)
     {
         process_input();
         process_cpu_input();
+
+        if(game_clock != 0) {
+            update();
+            game_clock--;
+            continue;
+        }
+
         if(err = render()) {
             printf("Error rendering the game state: %x\n", err);
             return EXIT_FAILURE;
-        }
-
-        if(last_updated != game_clock) {
-            update();
-            last_updated++;
         }
     }
 }

@@ -156,5 +156,5 @@ unsigned char destroy_irq_handler() {
     return EXIT_SUCCESS;
 }
 
-unsigned int game_clock;
+unsigned char game_clock = 0;
 bool is_pal = false;
